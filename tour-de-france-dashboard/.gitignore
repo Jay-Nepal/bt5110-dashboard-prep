@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/duckdb/
+public/data/points.csv
+*.log
+.DS_Store
+docs/qa-queries.json
+__pycache__/

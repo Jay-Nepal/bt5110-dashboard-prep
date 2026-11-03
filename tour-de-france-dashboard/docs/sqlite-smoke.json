@@ -1,0 +1,748 @@
+{
+  "method": "Supplemental SQLite execution of application SQL after date-syntax and string-aggregate adaptation; NOT DuckDB/Vitest validation. ROLLUP not tested.",
+  "passed": [
+    {
+      "case": 0,
+      "id": "kpis",
+      "rows": 1
+    },
+    {
+      "case": 0,
+      "id": "gc",
+      "rows": 10
+    },
+    {
+      "case": 0,
+      "id": "leaders",
+      "rows": 22
+    },
+    {
+      "case": 0,
+      "id": "story",
+      "rows": 105
+    },
+    {
+      "case": 0,
+      "id": "stages",
+      "rows": 21
+    },
+    {
+      "case": 0,
+      "id": "stageResults",
+      "rows": 171
+    },
+    {
+      "case": 0,
+      "id": "stageTeams",
+      "rows": 8
+    },
+    {
+      "case": 0,
+      "id": "itt",
+      "rows": 2
+    },
+    {
+      "case": 0,
+      "id": "longest",
+      "rows": 1
+    },
+    {
+      "case": 0,
+      "id": "profile",
+      "rows": 1
+    },
+    {
+      "case": 0,
+      "id": "trace",
+      "rows": 21
+    },
+    {
+      "case": 0,
+      "id": "pivotal",
+      "rows": 1
+    },
+    {
+      "case": 0,
+      "id": "mountains",
+      "rows": 1
+    },
+    {
+      "case": 0,
+      "id": "top10",
+      "rows": 13
+    },
+    {
+      "case": 0,
+      "id": "consistency",
+      "rows": 182
+    },
+    {
+      "case": 0,
+      "id": "teamRank",
+      "rows": 23
+    },
+    {
+      "case": 0,
+      "id": "contributions",
+      "rows": 23
+    },
+    {
+      "case": 0,
+      "id": "teamRiders",
+      "rows": 182
+    },
+    {
+      "case": 0,
+      "id": "depth",
+      "rows": 23
+    },
+    {
+      "case": 0,
+      "id": "heatmap",
+      "rows": 92
+    },
+    {
+      "case": 0,
+      "id": "heatDetails",
+      "rows": 210
+    },
+    {
+      "case": 0,
+      "id": "speed",
+      "rows": 715
+    },
+    {
+      "case": 0,
+      "id": "teamSpeed",
+      "rows": 92
+    },
+    {
+      "case": 0,
+      "id": "terrainShift",
+      "rows": 182
+    },
+    {
+      "case": 0,
+      "id": "classifications",
+      "rows": 160
+    },
+    {
+      "case": 0,
+      "id": "counterfactual",
+      "rows": 160
+    },
+    {
+      "case": 0,
+      "id": "changes",
+      "rows": 1
+    },
+    {
+      "case": 0,
+      "id": "official",
+      "rows": 0
+    },
+    {
+      "case": 0,
+      "id": "agreement",
+      "rows": 0
+    },
+    {
+      "case": 0,
+      "id": "nations",
+      "rows": 30
+    },
+    {
+      "case": 0,
+      "id": "nationalOutcomes",
+      "rows": 27
+    },
+    {
+      "case": 0,
+      "id": "nationRiders",
+      "rows": 184
+    },
+    {
+      "case": 0,
+      "id": "nationalResults",
+      "rows": 63
+    },
+    {
+      "case": 0,
+      "id": "headTrace",
+      "rows": 21
+    },
+    {
+      "case": 0,
+      "id": "headCounts",
+      "rows": 4
+    },
+    {
+      "case": 0,
+      "id": "scope",
+      "rows": 1
+    },
+    {
+      "case": 1,
+      "id": "kpis",
+      "rows": 1
+    },
+    {
+      "case": 1,
+      "id": "gc",
+      "rows": 10
+    },
+    {
+      "case": 1,
+      "id": "leaders",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "story",
+      "rows": 10
+    },
+    {
+      "case": 1,
+      "id": "stages",
+      "rows": 2
+    },
+    {
+      "case": 1,
+      "id": "stageResults",
+      "rows": 37
+    },
+    {
+      "case": 1,
+      "id": "stageTeams",
+      "rows": 1
+    },
+    {
+      "case": 1,
+      "id": "itt",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "longest",
+      "rows": 1
+    },
+    {
+      "case": 1,
+      "id": "profile",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "trace",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "pivotal",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "mountains",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "top10",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "consistency",
+      "rows": 37
+    },
+    {
+      "case": 1,
+      "id": "teamRank",
+      "rows": 15
+    },
+    {
+      "case": 1,
+      "id": "contributions",
+      "rows": 15
+    },
+    {
+      "case": 1,
+      "id": "teamRiders",
+      "rows": 37
+    },
+    {
+      "case": 1,
+      "id": "depth",
+      "rows": 15
+    },
+    {
+      "case": 1,
+      "id": "heatmap",
+      "rows": 15
+    },
+    {
+      "case": 1,
+      "id": "heatDetails",
+      "rows": 2
+    },
+    {
+      "case": 1,
+      "id": "speed",
+      "rows": 37
+    },
+    {
+      "case": 1,
+      "id": "teamSpeed",
+      "rows": 15
+    },
+    {
+      "case": 1,
+      "id": "terrainShift",
+      "rows": 37
+    },
+    {
+      "case": 1,
+      "id": "classifications",
+      "rows": 37
+    },
+    {
+      "case": 1,
+      "id": "counterfactual",
+      "rows": 37
+    },
+    {
+      "case": 1,
+      "id": "changes",
+      "rows": 1
+    },
+    {
+      "case": 1,
+      "id": "official",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "agreement",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "nations",
+      "rows": 1
+    },
+    {
+      "case": 1,
+      "id": "nationalOutcomes",
+      "rows": 1
+    },
+    {
+      "case": 1,
+      "id": "nationRiders",
+      "rows": 37
+    },
+    {
+      "case": 1,
+      "id": "nationalResults",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "headTrace",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "headCounts",
+      "rows": 0
+    },
+    {
+      "case": 1,
+      "id": "scope",
+      "rows": 1
+    },
+    {
+      "case": 2,
+      "id": "kpis",
+      "rows": 1
+    },
+    {
+      "case": 2,
+      "id": "gc",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "leaders",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "story",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "stages",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "stageResults",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "stageTeams",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "itt",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "longest",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "profile",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "trace",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "pivotal",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "mountains",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "top10",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "consistency",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "teamRank",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "contributions",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "teamRiders",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "depth",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "heatmap",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "heatDetails",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "speed",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "teamSpeed",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "terrainShift",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "classifications",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "counterfactual",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "changes",
+      "rows": 1
+    },
+    {
+      "case": 2,
+      "id": "official",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "agreement",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "nations",
+      "rows": 30
+    },
+    {
+      "case": 2,
+      "id": "nationalOutcomes",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "nationRiders",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "nationalResults",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "headTrace",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "headCounts",
+      "rows": 0
+    },
+    {
+      "case": 2,
+      "id": "scope",
+      "rows": 1
+    },
+    {
+      "case": 3,
+      "id": "kpis",
+      "rows": 1
+    },
+    {
+      "case": 3,
+      "id": "gc",
+      "rows": 10
+    },
+    {
+      "case": 3,
+      "id": "leaders",
+      "rows": 5
+    },
+    {
+      "case": 3,
+      "id": "story",
+      "rows": 20
+    },
+    {
+      "case": 3,
+      "id": "stages",
+      "rows": 4
+    },
+    {
+      "case": 3,
+      "id": "stageResults",
+      "rows": 0
+    },
+    {
+      "case": 3,
+      "id": "stageTeams",
+      "rows": 0
+    },
+    {
+      "case": 3,
+      "id": "itt",
+      "rows": 0
+    },
+    {
+      "case": 3,
+      "id": "longest",
+      "rows": 1
+    },
+    {
+      "case": 3,
+      "id": "profile",
+      "rows": 1
+    },
+    {
+      "case": 3,
+      "id": "trace",
+      "rows": 4
+    },
+    {
+      "case": 3,
+      "id": "pivotal",
+      "rows": 1
+    },
+    {
+      "case": 3,
+      "id": "mountains",
+      "rows": 0
+    },
+    {
+      "case": 3,
+      "id": "top10",
+      "rows": 2
+    },
+    {
+      "case": 3,
+      "id": "consistency",
+      "rows": 182
+    },
+    {
+      "case": 3,
+      "id": "teamRank",
+      "rows": 23
+    },
+    {
+      "case": 3,
+      "id": "contributions",
+      "rows": 23
+    },
+    {
+      "case": 3,
+      "id": "teamRiders",
+      "rows": 182
+    },
+    {
+      "case": 3,
+      "id": "depth",
+      "rows": 23
+    },
+    {
+      "case": 3,
+      "id": "heatmap",
+      "rows": 46
+    },
+    {
+      "case": 3,
+      "id": "heatDetails",
+      "rows": 40
+    },
+    {
+      "case": 3,
+      "id": "speed",
+      "rows": 364
+    },
+    {
+      "case": 3,
+      "id": "teamSpeed",
+      "rows": 46
+    },
+    {
+      "case": 3,
+      "id": "terrainShift",
+      "rows": 182
+    },
+    {
+      "case": 3,
+      "id": "classifications",
+      "rows": 181
+    },
+    {
+      "case": 3,
+      "id": "counterfactual",
+      "rows": 181
+    },
+    {
+      "case": 3,
+      "id": "changes",
+      "rows": 1
+    },
+    {
+      "case": 3,
+      "id": "official",
+      "rows": 0
+    },
+    {
+      "case": 3,
+      "id": "agreement",
+      "rows": 0
+    },
+    {
+      "case": 3,
+      "id": "nations",
+      "rows": 30
+    },
+    {
+      "case": 3,
+      "id": "nationalOutcomes",
+      "rows": 27
+    },
+    {
+      "case": 3,
+      "id": "nationRiders",
+      "rows": 182
+    },
+    {
+      "case": 3,
+      "id": "nationalResults",
+      "rows": 12
+    },
+    {
+      "case": 3,
+      "id": "headTrace",
+      "rows": 4
+    },
+    {
+      "case": 3,
+      "id": "headCounts",
+      "rows": 2
+    },
+    {
+      "case": 3,
+      "id": "scope",
+      "rows": 1
+    }
+  ],
+  "failed": [],
+  "skipped": [
+    {
+      "case": 0,
+      "id": "pivot",
+      "reason": "SQLite lacks ROLLUP; needs DuckDB test"
+    },
+    {
+      "case": 1,
+      "id": "pivot",
+      "reason": "SQLite lacks ROLLUP; needs DuckDB test"
+    },
+    {
+      "case": 2,
+      "id": "pivot",
+      "reason": "SQLite lacks ROLLUP; needs DuckDB test"
+    },
+    {
+      "case": 3,
+      "id": "pivot",
+      "reason": "SQLite lacks ROLLUP; needs DuckDB test"
+    }
+  ]
+}

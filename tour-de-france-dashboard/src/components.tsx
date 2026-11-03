@@ -1,0 +1,46 @@
+import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
+import {createColumnHelper,tableFeatures,useTable} from '@tanstack/react-table';
+import * as echarts from 'echarts';
+import type {EChartsOption} from 'echarts';
+import {useApp,useQuery} from './context';
+import {formatCell,labels,num} from './format';
+import type {QueryId,QueryResult,Row,Cell} from './queries';
+import type {Terrain} from './state';
+
+function download(href:string,name:string){const a=document.createElement('a');a.href=href;a.download=name;a.click();}
+export function exportCsv(data:QueryResult,name:string){const cols=Object.keys(data.rows[0]||{});const escape=(v:Cell|undefined)=>{let s=v==null?'':String(v);if(typeof v==='string'&&/^[=+@\-\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};const csv='\uFEFF'+[cols.map(escape).join(','),...data.rows.map(r=>cols.map(k=>escape(r[k])).join(','))].join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));download(url,`${name}.csv`);setTimeout(()=>URL.revokeObjectURL(url),1000);}
+export function Loading(){return <div className="skeleton" role="status" aria-label="Loading query"><span/><span/><span/></div>;}
+export function Empty(){return <div className="empty">No results in this selection. Adjust the filters or clear all.</div>;}
+export function Panel({id,title,description,children,data,actions}:{id:string;title:string;description?:string;children:ReactNode;data?:QueryResult;actions?:ReactNode}){const {state,change}=useApp();return <section className="panel" id={id}><header className="panel-heading"><div><h2>{title}</h2>{description&&<p>{description}</p>}</div><div className="panel-actions">{data&&<><span className="operation">{data.operation}</span><button className="quiet" onClick={()=>change({sql:state.sql===id?'':id})} aria-expanded={state.sql===id}>Show SQL</button></>}{actions}</div></header>{data&&state.sql===id&&<div className="sql-panel"><div><strong>{data.operation}</strong><span>{num(data.ms,1)} ms · {num(data.rows.length)} rows</span><button onClick={()=>change({sql:''})} aria-label="Close SQL panel">Close</button></div><pre tabIndex={0}>{data.sql}</pre></div>}{children}{data?.note&&<p className="panel-note" title={data.note}>{data.note}</p>}</section>;}
+export function LinkedCell({column,value,row}:{column:string;value:Cell|undefined;row:Row}){const {change,lookup,state}=useApp();if(value==null){return <span className="muted">{Number(row[column+'_subtotal'])===1?'Subtotal':'—'}</span>;}
+ const text=formatCell(column,value);let action:(()=>void)|undefined;
+ if(column==='rider_name'||column==='winner'){const found=lookup.riders.find(r=>r.rider_name===value);const bib=Number(row[column==='winner'?'winner_bib':'bib_number']||found?.bib_number);if(bib)action=()=>change({page:'rider',rider:bib});}
+ if(column==='team_name')action=()=>change({page:'teams',team:String(value)});
+ if(column==='stage_id')action=()=>change({page:'stages',stage:Number(value)});
+ if(column==='country_code'||column==='rider_country')action=()=>change({page:'nations',nation:String(value),nationMode:column==='rider_country'?'riders':state.nationMode});
+ if(column==='type')action=()=>change({types:[String(value) as Terrain]});
+ if(column==='source_url'&&/^https?:\/\//.test(String(value)))return <a href={String(value)} target="_blank" rel="noreferrer">Source ↗</a>;
+ const tie=(column==='gc_rank'||column==='counter_rank')&&Number(row.tie_count)>1?'=':'';
+ return action?<button className="text-link" onClick={action}>{text}</button>:<span className={column.includes('rank')?'rank-number':''}>{tie}{text}</span>;
+}
+const features=tableFeatures({});
+const helper=createColumnHelper<typeof features,Row>();
+export function DataTable({id,data,columns,compact=false}:{id:QueryId;data:QueryResult;columns?:string[];compact?:boolean}){const {state,change}=useApp();
+ const keys=columns||Object.keys(data.rows[0]||{}).filter(x=>!['bib_number','tie_count','winner_bib'].includes(x)&&!x.endsWith('_subtotal'));
+ const colDefs=useMemo(()=>helper.columns(keys.map(key=>helper.accessor(row=>row[key],{id:key,header:()=> <button onClick={()=>change({sort:id+':'+key,descending:state.sort===id+':'+key?!state.descending:false})} aria-label={`Sort by ${labels[key]||key.replaceAll('_',' ')}`}>{labels[key]||key.replaceAll('_',' ')} <span aria-hidden="true">{state.sort===id+':'+key?(state.descending?'↓':'↑'):'↕'}</span></button>,cell:info=><LinkedCell column={key} value={info.getValue()} row={info.row.original}/>}))),[keys.join(','),state.sort,state.descending,change,id]);
+ const table=useTable({features,data:data.rows,columns:colDefs});
+ if(!data.rows.length)return <Empty/>;
+ return <div className={`table-wrap ${compact?'compact':''}`} tabIndex={0} aria-label="Scrollable data table"><table><thead>{table.getHeaderGroups().map(group=><tr key={group.id}>{group.headers.map(h=><th key={h.id} scope="col"><table.FlexRender header={h}/></th>)}</tr>)}</thead><tbody>{table.getRowModel().rows.map(row=><tr key={row.id}>{row.getAllCells().map(cell=><td key={cell.id}><table.FlexRender cell={cell}/></td>)}</tr>)}</tbody></table></div>;
+}
+export function TablePanel({id,title,description,columns,compact=false}:{id:QueryId;title:string;description?:string;columns?:string[];compact?:boolean}){const {data,error}=useQuery(id);return <Panel id={id} title={title} description={description} data={data} actions={data&&<button className="quiet" onClick={()=>exportCsv(data,id)}>CSV ↓</button>}>{error?<p className="error" role="alert">{error}</p>:data?<DataTable id={id} data={data} columns={columns} compact={compact}/>:<Loading/>}</Panel>;}
+export function ChartPanel({id,title,description,options,onClick,height=330}:{id:QueryId;title:string;description?:string;options:(rows:Row[])=>EChartsOption;onClick?:(value:{name:string;data:unknown})=>void;height?:number}){const {data,error}=useQuery(id);const {state,change}=useApp();const el=useRef<HTMLDivElement>(null);const chart=useRef<echarts.ECharts|undefined>(undefined);const [renderError,setRenderError]=useState('');
+ useEffect(()=>{if(!el.current||!data?.rows.length)return;let cancelled=false;let observer:ResizeObserver|undefined;
+ async function render(){try{if(id==='nations'&&!echarts.getMap('world')){const root=new URL(import.meta.env.BASE_URL,document.baseURI);const response=await fetch(new URL('world.json',root));if(!response.ok)throw new Error('World map could not be loaded');echarts.registerMap('world',await response.json());}if(cancelled||!el.current)return;chart.current=echarts.init(el.current,state.theme==='dark'?'dark':undefined,{renderer:'canvas'});chart.current.setOption({backgroundColor:'transparent',textStyle:{fontFamily:'system-ui, sans-serif',fontSize:13},aria:{enabled:true,label:{description:title+'. '+(description||'')},decal:{show:true}},animation:false,...options(data!.rows)});let legends:Record<string,Record<string,boolean>>={};try{legends=JSON.parse(state.legends||'{}') as Record<string,Record<string,boolean>>;}catch{/* invalid shared URL: use defaults */}const selected=legends[id];if(selected&&typeof selected==='object')chart.current.setOption({legend:{selected}});chart.current.on('legendselectchanged',event=>{const value=event as {selected:Record<string,boolean>};change({legends:JSON.stringify({...legends,[id]:value.selected})});});if(onClick)chart.current.on('click',p=>onClick({name:p.name,data:p.data}));observer=new ResizeObserver(()=>chart.current?.resize());observer.observe(el.current);setRenderError('');}catch(e){setRenderError(String(e));}}
+ void render();return()=>{cancelled=true;observer?.disconnect();chart.current?.dispose();chart.current=undefined;};
+ },[data,state.theme,state.legends,title,description,id,options,onClick,change]);
+ return <Panel id={id+'-chart-'+title.replace(/\W/g,'').toLowerCase()} title={title} description={description} data={data} actions={data&&<button className="quiet" onClick={()=>{if(chart.current)download(chart.current.getDataURL({type:'png',pixelRatio:2,backgroundColor:state.theme==='dark'?'#18202a':'#ffffff'}),id+'.png');}}>PNG ↓</button>}>
+ {error||renderError?<p className="error" role="alert">{error||renderError}</p>:!data?<Loading/>:!data.rows.length?<Empty/>:<><div ref={el} style={{height}} role="img" aria-label={title+'; underlying values in the chart data table.'}/><details className="chart-data"><summary>Accessible chart data · {num(data.rows.length)} rows</summary><button className="quiet" onClick={()=>exportCsv(data,id)}>CSV ↓</button><DataTable id={id} data={data}/></details></>}
+ </Panel>;
+}
+export function MetricTiles(){const {data,error}=useQuery('kpis');return <Panel id="kpis" title="Race at a glance" data={data}>{error?<p className="error">{error}</p>:!data?<Loading/>:<div className="metrics">{[['stages','Stages'],['distance_km','Kilometres'],['riders_started','Riders registered'],['finishers','Race finishers'],['teams','Teams'],['nations','Rider nations']].map(([key,label])=><div key={key}><span>{label}</span><strong>{num(data.rows[0]?.[key],key==='distance_km'?1:0)}</strong></div>)}</div>}</Panel>;}
+export function Callout({children,tone='yellow'}:{children:ReactNode;tone?:'yellow'|'green'|'red'}){return <div className={`callout ${tone}`}>{children}</div>;}

@@ -1,0 +1,527 @@
+{
+  "method": "Independent Python/pandas CSV audit, not DuckDB SQL execution",
+  "checks": [
+    {
+      "check": "Row counts",
+      "pass": true,
+      "actual": {
+        "location": 39,
+        "rider": 184,
+        "stage": 21,
+        "country": 30,
+        "team": 23,
+        "result": 3602,
+        "exit": 24
+      },
+      "expected": {
+        "country": 30,
+        "team": 23,
+        "rider": 184,
+        "location": 39,
+        "stage": 21,
+        "result": 3602,
+        "exit": 24
+      }
+    },
+    {
+      "check": "Finishers",
+      "pass": true,
+      "actual": 160,
+      "expected": 160
+    },
+    {
+      "check": "Final GC top 10 gaps",
+      "pass": true,
+      "actual": [
+        0,
+        264,
+        660,
+        732,
+        1032,
+        1214,
+        1355,
+        1530,
+        1682,
+        1962
+      ],
+      "expected": [
+        0,
+        264,
+        660,
+        732,
+        1032,
+        1214,
+        1355,
+        1530,
+        1682,
+        1962
+      ]
+    },
+    {
+      "check": "GC winner seconds",
+      "pass": true,
+      "actual": 277349,
+      "expected": 277349
+    },
+    {
+      "check": "GC top 10 riders",
+      "pass": true,
+      "actual": [
+        "Tadej Pogacar",
+        "Jonas Vingegaard",
+        "Florian Lipowitz",
+        "Oscar Onley",
+        "Félix Gall",
+        "Tobias Johannessen",
+        "Kévin Vauquelin",
+        "Primoz Roglic",
+        "Ben Healy",
+        "Jordan Jegat"
+      ],
+      "expected": [
+        "Tadej Pogacar",
+        "Jonas Vingegaard",
+        "Florian Lipowitz",
+        "Oscar Onley",
+        "Félix Gall",
+        "Tobias Johannessen",
+        "Kévin Vauquelin",
+        "Primoz Roglic",
+        "Ben Healy",
+        "Jordan Jegat"
+      ]
+    },
+    {
+      "check": "GC leaders",
+      "pass": true,
+      "actual": [
+        [
+          "Jasper Philipsen"
+        ],
+        [
+          "Mathieu Van Der Poel"
+        ],
+        [
+          "Mathieu Van Der Poel"
+        ],
+        [
+          "Mathieu Van Der Poel",
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Mathieu Van Der Poel"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Ben Healy"
+        ],
+        [
+          "Ben Healy"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ]
+      ],
+      "expected": [
+        [
+          "Jasper Philipsen"
+        ],
+        [
+          "Mathieu Van Der Poel"
+        ],
+        [
+          "Mathieu Van Der Poel"
+        ],
+        [
+          "Mathieu Van Der Poel",
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Mathieu Van Der Poel"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Ben Healy"
+        ],
+        [
+          "Ben Healy"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ],
+        [
+          "Tadej Pogacar"
+        ]
+      ]
+    },
+    {
+      "check": "Counterfactual final position changes",
+      "pass": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "check": "Counterfactual changed leader stages",
+      "pass": true,
+      "actual": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "expected": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "check": "Team classification top 4",
+      "pass": true,
+      "actual": [
+        "TEAM VISMA | LEASE A BIKE",
+        "UAE TEAM EMIRATES XRG",
+        "RED BULL - BORA - HANSGROHE",
+        "ARKEA-B&B HOTELS"
+      ],
+      "expected": [
+        "TEAM VISMA | LEASE A BIKE",
+        "UAE TEAM EMIRATES XRG",
+        "RED BULL - BORA - HANSGROHE",
+        "ARKEA-B&B HOTELS"
+      ]
+    },
+    {
+      "check": "Team gaps",
+      "pass": true,
+      "actual": [
+        0,
+        1466,
+        5087,
+        7852
+      ],
+      "expected": [
+        0,
+        1466,
+        5087,
+        7852
+      ]
+    },
+    {
+      "check": "Final GC best three team gaps",
+      "pass": true,
+      "actual": [
+        0,
+        627,
+        659
+      ],
+      "expected": [
+        0,
+        627,
+        659
+      ]
+    },
+    {
+      "check": "KOM top five gaps",
+      "pass": true,
+      "actual": [
+        0,
+        151,
+        371,
+        437,
+        601
+      ],
+      "expected": [
+        0,
+        151,
+        371,
+        437,
+        601
+      ]
+    },
+    {
+      "check": "Points top five",
+      "pass": true,
+      "actual": [
+        236,
+        176,
+        160,
+        121,
+        118
+      ],
+      "expected": [
+        236,
+        176,
+        160,
+        121,
+        118
+      ]
+    },
+    {
+      "check": "Young eligibility",
+      "pass": true,
+      "actual": 57,
+      "expected": 57
+    },
+    {
+      "check": "Calendar eligibility",
+      "pass": true,
+      "actual": 48,
+      "expected": 48
+    },
+    {
+      "check": "Young top 3",
+      "pass": true,
+      "actual": [
+        "Florian Lipowitz",
+        "Oscar Onley",
+        "Tobias Johannessen"
+      ],
+      "expected": [
+        "Florian Lipowitz",
+        "Oscar Onley",
+        "Tobias Johannessen"
+      ]
+    },
+    {
+      "check": "Top ten counts",
+      "pass": true,
+      "actual": [
+        13,
+        11,
+        8,
+        7
+      ],
+      "expected": [
+        13,
+        11,
+        8,
+        7
+      ]
+    },
+    {
+      "check": "Mountain podiums",
+      "pass": true,
+      "actual": [
+        4,
+        4,
+        3,
+        2
+      ],
+      "expected": [
+        4,
+        4,
+        3,
+        2
+      ]
+    },
+    {
+      "check": "Pivotal days",
+      "pass": true,
+      "actual": [
+        [
+          12,
+          -206.5
+        ],
+        [
+          19,
+          -101.5
+        ],
+        [
+          19,
+          -91.5
+        ],
+        [
+          18,
+          -59.5
+        ]
+      ],
+      "expected": [
+        [
+          12,
+          -206.5
+        ],
+        [
+          19,
+          -101.5
+        ],
+        [
+          19,
+          -91.5
+        ],
+        [
+          18,
+          -59.5
+        ]
+      ]
+    },
+    {
+      "check": "ITT catalogue",
+      "pass": true,
+      "actual": [
+        [
+          5,
+          "2025-07-09",
+          33.0,
+          "Remco Evenepoel"
+        ],
+        [
+          13,
+          "2025-07-18",
+          10.9,
+          "Tadej Pogacar"
+        ]
+      ],
+      "expected": [
+        [
+          5,
+          "2025-07-09",
+          33.0,
+          "Remco Evenepoel"
+        ],
+        [
+          13,
+          "2025-07-18",
+          10.9,
+          "Tadej Pogacar"
+        ]
+      ]
+    },
+    {
+      "check": "Longest stage",
+      "pass": true,
+      "actual": 2,
+      "expected": 2
+    },
+    {
+      "check": "Riders France Belgium Netherlands",
+      "pass": true,
+      "actual": [
+        38,
+        29,
+        13
+      ],
+      "expected": [
+        38,
+        29,
+        13
+      ]
+    },
+    {
+      "check": "Teams France Belgium",
+      "pass": true,
+      "actual": [
+        5,
+        4
+      ],
+      "expected": [
+        5,
+        4
+      ]
+    },
+    {
+      "check": "Rider nationalities",
+      "pass": true,
+      "actual": 27,
+      "expected": 27
+    },
+    {
+      "check": "Team countries",
+      "pass": true,
+      "actual": 14,
+      "expected": 14
+    },
+    {
+      "check": "Cross-border riders",
+      "pass": true,
+      "actual": 115,
+      "expected": 115
+    },
+    {
+      "check": "Stage 8 winner",
+      "pass": true,
+      "actual": "Jonathan Milan",
+      "expected": "Jonathan Milan"
+    },
+    {
+      "check": "Stage 8 lowest adjusted",
+      "pass": true,
+      "actual": "Wout Van Aert",
+      "expected": "Wout Van Aert"
+    }
+  ]
+}

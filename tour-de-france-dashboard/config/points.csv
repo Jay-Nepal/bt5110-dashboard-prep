@@ -1,0 +1,61 @@
+type,rank,points
+flat,1,50
+flat,2,30
+flat,3,20
+flat,4,18
+flat,5,16
+flat,6,14
+flat,7,12
+flat,8,10
+flat,9,8
+flat,10,7
+flat,11,6
+flat,12,5
+flat,13,4
+flat,14,3
+flat,15,2
+hilly,1,30
+hilly,2,25
+hilly,3,22
+hilly,4,19
+hilly,5,17
+hilly,6,15
+hilly,7,13
+hilly,8,11
+hilly,9,9
+hilly,10,7
+hilly,11,6
+hilly,12,5
+hilly,13,4
+hilly,14,3
+hilly,15,2
+mountain,1,20
+mountain,2,17
+mountain,3,15
+mountain,4,13
+mountain,5,11
+mountain,6,10
+mountain,7,9
+mountain,8,8
+mountain,9,7
+mountain,10,6
+mountain,11,5
+mountain,12,4
+mountain,13,3
+mountain,14,2
+mountain,15,1
+individual time-trial,1,20
+individual time-trial,2,17
+individual time-trial,3,15
+individual time-trial,4,13
+individual time-trial,5,11
+individual time-trial,6,10
+individual time-trial,7,9
+individual time-trial,8,8
+individual time-trial,9,7
+individual time-trial,10,6
+individual time-trial,11,5
+individual time-trial,12,4
+individual time-trial,13,3
+individual time-trial,14,2
+individual time-trial,15,1

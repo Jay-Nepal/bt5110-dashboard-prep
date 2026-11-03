@@ -1,0 +1,39 @@
+{
+  "name": "bt5110-tour-de-france-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "node scripts/copy-assets.mjs && vite --host 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "npm run typecheck && node scripts/copy-assets.mjs && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "screenshots": "node scripts/screenshots.mjs",
+    "verify": "npm run test && npm run build",
+    "audit:data": "python scripts/audit-data.py"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "1.33.1-dev57.0",
+    "@tanstack/react-table": "9.3.1",
+    "echarts": "6.1.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@duckdb/node-api": "2.0.0-r.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.2.1",
+    "playwright": "1.64.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  }
+}
