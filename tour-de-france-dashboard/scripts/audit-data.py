@@ -1,0 +1,55 @@
+"""Independent CSV audit; does NOT substitute for the DuckDB/Vitest suite."""
+import json, pathlib, pandas as pd
+p=pathlib.Path(__file__).resolve().parents[1]
+d={x.stem:pd.read_csv(x) for x in (p/'public/data').glob('*.csv') if x.stem not in ['official_classifications','country_code_map']}
+r=d['rider'];s=d['stage'];f=d['result'].merge(s,on='stage_id').merge(r,on='bib_number')
+f['adjusted_time']=f.finish_time-f.time_bonus+f.time_penalty
+checks=[]
+def check(name,actual,expected):
+ ok=actual==expected
+ checks.append({'check':name,'pass':bool(ok),'actual':actual,'expected':expected})
+ if not ok:print('CONFLICT',name,actual,expected)
+check('Row counts',{k:len(v) for k,v in d.items()}, {'country':30,'team':23,'rider':184,'location':39,'stage':21,'result':3602,'exit':24})
+g=f.groupby('bib_number').agg(total_time=('adjusted_time','sum'),n=('stage_id','count')).query('n==21').sort_values('total_time')
+g['rank']=g.total_time.rank(method='min').astype(int);g['gap']=g.total_time-g.total_time.min()
+check('Finishers',len(g),160)
+check('Final GC top 10 gaps',g['gap'].head(10).astype(int).tolist(),[0,264,660,732,1032,1214,1355,1530,1682,1962])
+check('GC winner seconds',int(g.iloc[0].total_time),277349)
+check('GC top 10 riders',r.set_index('bib_number').loc[g.head(10).index,'rider_name'].tolist(),['Tadej Pogacar','Jonas Vingegaard','Florian Lipowitz','Oscar Onley','Félix Gall','Tobias Johannessen','Kévin Vauquelin','Primoz Roglic','Ben Healy','Jordan Jegat'])
+leaders=[];changed=[];final_changes=None
+for k in range(1,22):
+ a=f[f.stage_id<=k].groupby('bib_number').agg(total=('adjusted_time','sum'),raw=('finish_time','sum'),n=('stage_id','count')).query('n==@k')
+ leaders.append(r.set_index('bib_number').loc[a[a.total==a.total.min()].index,'rider_name'].sort_values().tolist())
+ if set(a[a.total==a.total.min()].index)!=set(a[a.raw==a.raw.min()].index):changed.append(k)
+ if k==21:final_changes=int((a.total.rank(method='min')!=a.raw.rank(method='min')).sum())
+check('GC leaders',leaders,[['Jasper Philipsen'],['Mathieu Van Der Poel'],['Mathieu Van Der Poel'],['Mathieu Van Der Poel','Tadej Pogacar'],['Tadej Pogacar'],['Mathieu Van Der Poel']]+[['Tadej Pogacar']]*3+[['Ben Healy']]*2+[['Tadej Pogacar']]*10)
+check('Counterfactual final position changes',final_changes,0)
+check('Counterfactual changed leader stages',changed,[1,2,3,4])
+team=f.sort_values(['finish_time','bib_number']).groupby(['rider_team','stage_id']).head(3).groupby('rider_team').finish_time.sum().sort_values()
+check('Team classification top 4',team.head(4).index.tolist(),['TEAM VISMA | LEASE A BIKE','UAE TEAM EMIRATES XRG','RED BULL - BORA - HANSGROHE','ARKEA-B&B HOTELS'])
+check('Team gaps',(team-team.min()).head(4).astype(int).tolist(),[0,1466,5087,7852])
+alt=g.reset_index().merge(r,on='bib_number').sort_values('total_time').groupby('rider_team').head(3).groupby('rider_team').total_time.sum().sort_values()
+check('Final GC best three team gaps',(alt-alt.min()).head(3).astype(int).tolist(),[0,627,659])
+m=f[f.type=='mountain'];kom=m.groupby('bib_number').agg(total=('adjusted_time','sum'),n=('stage_id','count')).query('n==6').sort_values('total')
+check('KOM top five gaps',(kom.total-kom.total.min()).head(5).astype(int).tolist(),[0,151,371,437,601])
+scale=pd.read_csv(p/'config/points.csv');points=f.merge(scale,on=['type','rank'],how='left').fillna({'points':0}).groupby('bib_number').points.sum().sort_values(ascending=False)
+check('Points top five',points.head(5).astype(int).tolist(),[236,176,160,121,118])
+check('Young eligibility',int((r.dob>'1999-07-05').sum()),57);check('Calendar eligibility',int((r.dob>='2000-01-01').sum()),48)
+check('Young top 3',g.reset_index().merge(r,on='bib_number').query("dob>'1999-07-05'").head(3).rider_name.tolist(),['Florian Lipowitz','Oscar Onley','Tobias Johannessen'])
+check('Top ten counts',f[f['rank']<=10].groupby('rider_name').size().reindex(['Tadej Pogacar','Jonas Vingegaard','Oscar Onley','Kévin Vauquelin']).astype(int).tolist(),[13,11,8,7])
+check('Mountain podiums',m[m['rank']<=3].groupby('rider_name').size().reindex(['Jonas Vingegaard','Tadej Pogacar','Thymen Arensman','Ben Healy']).astype(int).tolist(),[4,4,3,2])
+benchmark=f[f.bib_number.isin(g.head(10).index)].groupby('stage_id').adjusted_time.median()
+a=f.assign(delta=f.adjusted_time-f.stage_id.map(benchmark));a['abs_delta']=a.delta.abs()
+piv=a.sort_values(['abs_delta','stage_id'],ascending=[False,True]).groupby('bib_number').head(1).set_index('rider_name')
+check('Pivotal days',[[int(piv.loc[n,'stage_id']),float(piv.loc[n,'delta'])] for n in ['Tadej Pogacar','Jonas Vingegaard','Florian Lipowitz','Oscar Onley']],[[12,-206.5],[19,-101.5],[19,-91.5],[18,-59.5]])
+check('ITT catalogue',f[(f.type=='individual time-trial')&(f['rank']==1)][['stage_id','date','distance','rider_name']].values.tolist(),[[5,'2025-07-09',33.0,'Remco Evenepoel'],[13,'2025-07-18',10.9,'Tadej Pogacar']])
+check('Longest stage',int(s.sort_values('distance',ascending=False).iloc[0].stage_id),2)
+check('Riders France Belgium Netherlands',r.groupby('rider_country').size().reindex(['FRA','BEL','NLD']).tolist(),[38,29,13])
+check('Teams France Belgium',d['team'].groupby('team_country').size().reindex(['FRA','BEL']).tolist(),[5,4])
+check('Rider nationalities',int(r.rider_country.nunique()),27);check('Team countries',int(d['team'].team_country.nunique()),14)
+rr=r.merge(d['team'],left_on='rider_team',right_on='team_name');check('Cross-border riders',int((rr.rider_country!=rr.team_country).sum()),115)
+check('Stage 8 winner',f[(f.stage_id==8)&(f['rank']==1)].rider_name.iloc[0],'Jonathan Milan')
+check('Stage 8 lowest adjusted',f[f.stage_id==8].sort_values('adjusted_time').rider_name.iloc[0],'Wout Van Aert')
+(p/'docs/data-audit.json').write_text(json.dumps({'method':'Independent Python/pandas CSV audit, not DuckDB SQL execution','checks':checks},indent=2,ensure_ascii=False)+'\n')
+print(f'{sum(c["pass"] for c in checks)}/{len(checks)} independent CSV checks passed')
+assert all(c['pass'] for c in checks)

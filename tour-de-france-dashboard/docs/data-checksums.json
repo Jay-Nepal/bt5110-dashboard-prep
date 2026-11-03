@@ -1,0 +1,47 @@
+[
+  {
+    "file": "country_code_map.csv",
+    "sha256": "18c5f0a3be6db70c150163c676c22619355442ad5d0ce11a54542050315efcce",
+    "unchanged": true
+  },
+  {
+    "file": "location.csv",
+    "sha256": "5b1a8088f6fafd2cbed2bb56343966e2ddeb67ba565d35c50327ee3af4b20401",
+    "unchanged": true
+  },
+  {
+    "file": "README.md",
+    "sha256": "aeb8cd3333c91843c1f4de90a2cce4633dc35a68835b04bcf7445c864b3428ca",
+    "unchanged": true
+  },
+  {
+    "file": "rider.csv",
+    "sha256": "7800455c3e5f7e80e433437e5bb5197bdeacf3247b9656bdcaeb765ba3d13a7b",
+    "unchanged": true
+  },
+  {
+    "file": "stage.csv",
+    "sha256": "1f3d8bebebd2ae50621eb3ee9168be0d1ffe3706c6d4677374f1447e8b2c8208",
+    "unchanged": true
+  },
+  {
+    "file": "country.csv",
+    "sha256": "d57019b86a87316cabbd3ceaad7f4ca1891eccf7b495ef77944dd628a28f89c6",
+    "unchanged": true
+  },
+  {
+    "file": "team.csv",
+    "sha256": "18ea1fc9541f355b3753599164131fd73c3d7b64c5aba93a6b6514e9048861ea",
+    "unchanged": true
+  },
+  {
+    "file": "result.csv",
+    "sha256": "f4f462edb0e8c6e332cd5d139914a37ec825a9984afa485ff31376765c29bdb8",
+    "unchanged": true
+  },
+  {
+    "file": "exit.csv",
+    "sha256": "22648c3254a707bb7b59416de1420034dd056a20b448c4bb0adffaa3317f52c2",
+    "unchanged": true
+  }
+]
