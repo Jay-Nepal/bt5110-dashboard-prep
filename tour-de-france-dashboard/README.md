@@ -75,6 +75,15 @@ On Windows PowerShell, use `$env:VITE_BASE='/bt5110-dashboard-prep/'; npm run bu
 
 For Vercel or Netlify, import your Git repository, select Node 24, use `npm run build` and output directory `dist`. Included configuration files specify these defaults. For a manual static deployment, publish the entire `dist` directory, including `duckdb`, `data` and `world.json`. Check that the server serves `.wasm` as `application/wasm`.
 
+## Password protection (Vercel)
+
+`middleware.ts` puts the Vercel deployment behind a single shared password, with no username. Vercel runs it before every request, so the page, CSVs and WASM files are served only after the password is entered.
+
+- In Vercel → Project Settings → Environment Variables, set `DASHBOARD_PASSWORD` for Production and Preview. Then redeploy, because environment variable changes only apply to new deployments.
+- If the variable is missing, the deployment refuses every request (HTTP 503).
+- A correct password sets a 30-day HttpOnly cookie. Changing the password signs everyone out. Visit `/__logout` to sign out manually.
+- Local `npm run dev` and `npm run preview` do not run the middleware, so they stay open. GitHub Pages and Netlify ignore the file.
+
 ## Official references
 
 `public/data/official_classifications.csv` is an empty header-only template:
