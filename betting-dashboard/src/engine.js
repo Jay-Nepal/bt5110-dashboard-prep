@@ -220,6 +220,18 @@
     });
     const gcTop10 = gcFinal.slice(0, 10).map((e) => e.bib);
 
+    /* ---- full published points and mountains standings (top 10 = official file) ---- */
+    const published = { points: [], kom: [] };
+    (raw.published || []).forEach(([c, rank, bib, pts]) => { if (published[c]) published[c].push({ rank, bib, points: pts }); });
+    Object.values(published).forEach((l) => l.sort((x, y) => x.rank - y.rank));
+    const pubBy = { points: new Map(published.points.map((x) => [x.bib, x])), kom: new Map(published.kom.map((x) => [x.bib, x])) };
+    riders.forEach((r) => {
+      r.pubPoints = pubBy.points.get(r.bib) || null;   // { rank, points } or null if not classified
+      r.pubKom = pubBy.kom.get(r.bib) || null;
+      // published points minus finish-line points from the data = points won away from the finish (intermediate sprints)
+      r.otherPoints = r.pubPoints ? r.pubPoints.points - r.points : null;
+    });
+
     function gcAfter(stageId, opts) { return gcProgress(opts)[stageId]; }
     function gcPositionAfter(bib, stageId, opts) {
       const e = gcProgress(opts)[stageId].find((x) => x.bib === bib);
@@ -619,7 +631,7 @@
       gcProgress, gcAfter, gcPositionAfter, gcFinal, gcTop10, benchMedian,
       youngClassification, pointsRanking, pivotal, teamClassification, TEAMCLASS, TEAMCLASS_ADJ,
       teamContribution, teamTop10Detail, h2h, teamH2H, weekForm, consistency, terrainStats,
-      speedProfile, finisherSpeedMedian, stageDetail, official: raw.official || [],
+      speedProfile, finisherSpeedMedian, stageDetail, official: raw.official || [], published,
     };
   }
 

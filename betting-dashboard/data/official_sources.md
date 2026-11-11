@@ -68,3 +68,11 @@ Full-table checks. All 160 rows of the official letour.fr GC match `rider.csv` a
 - letour.fr's live rankings pages now show the **2026** race, so they were not used. For 2025, only the archived GC table could be read. Wayback captures of the 2025 points, KOM, young and team tables return 404 or redirect to 2026 captures.
 - ProCyclingStats and FirstCycling return 403 (bot protection), and Tissot Timing timed out. None of the three was used.
 - Team names in sources use sponsor spellings or 2026 names. RTE, for example, uses "Decathlon CMA CGM Team" and "Netcompany INEOS". All are mapped to the exact `team.csv` names.
+
+## Full published points and mountains standings (published_points_kom_2025.csv)
+
+`official_classifications_2025.csv` holds only the top 10 of each classification. `published_points_kom_2025.csv` holds the complete 2025 final points (132 riders) and mountains (55 riders) standings, as collected by our teammate Jay from CyclingDB for his dashboard (`jay.html`, 2025 edition data; source links in the file). Checks:
+
+- The top 10 of both lists is identical (rank, rider and points) to `official_classifications_2025.csv` (letour.fr / Wikipedia).
+- Ranks run 1..n with no gaps or ties, and every bib exists in `data/cleaned/rider.csv`.
+- For all 132 riders, published points ≥ the finish-line points we calculate from the race data. The difference is what they earned at intermediate sprints, which the race data does not record.

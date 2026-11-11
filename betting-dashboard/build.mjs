@@ -51,8 +51,18 @@ export function loadData() {
     c: o.classification, rank: int(o.rank), bib: o.bib_number ? int(o.bib_number) : null, name: o.name,
     team: o.team_name, value: o.value_text, num: Number(o.value_numeric), unit: o.unit, url: o.source_url,
   }));
+  // full published points and mountains standings (top 10 = official file); [classification, rank, bib, points]
+  const published = read(DATA, 'published_points_kom_2025.csv').map((p) => [p.classification, int(p.rank), int(p.bib_number), int(p.points)]);
+  // map outlines and stage towns for the route and nation maps (presentation only)
+  const geo = JSON.parse(fs.readFileSync(path.join(DATA, 'geo_2025.json'), 'utf8'));
   // sanity checks against the documented shape of the cleaned data
   const expect = (cond, msg) => { if (!cond) throw new Error(`data check failed: ${msg}`); };
+  expect(published.filter((p) => p[0] === 'points').length === 132 && published.filter((p) => p[0] === 'kom').length === 55, 'published points 132 / kom 55');
+  for (const c of ['points', 'kom']) {
+    const top = published.filter((p) => p[0] === c).slice(0, 10), off = official.filter((o) => o.c === c).sort((a, b) => a.rank - b.rank);
+    expect(top.every((p, i) => p[1] === off[i].rank && p[2] === off[i].bib && p[3] === off[i].num), `published ${c} top 10 equals the official top 10`);
+  }
+  expect(stages.every((s) => geo.places[s[4]] && geo.places[s[5]]), 'every stage town has coordinates');
   expect(riders.length === 184, 'riders 184');
   expect(teams.length === 23, 'teams 23');
   expect(stages.length === 21, 'stages 21');
@@ -62,7 +72,8 @@ export function loadData() {
   const bibs = new Set(riders.map((r) => r[0]));
   expect(results.every((r) => bibs.has(r[0])), 'result bibs exist');
   expect(official.every((o) => o.bib == null || bibs.has(o.bib)), 'official bibs exist');
-  return { riders, teams, stages, results, exits, countries, official };
+  expect(published.every((p) => bibs.has(p[2])), 'published bibs exist');
+  return { riders, teams, stages, results, exits, countries, official, published, geo };
 }
 
 // Make inline <script> content safe: "</script" must not appear literally, and the
