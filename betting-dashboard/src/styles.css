@@ -186,6 +186,22 @@ input[type="range"] { accent-color: var(--ink); width: 140px; }
 }
 .chip[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--sheet-2); }
 .chip .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.story-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.story-pick .chips { flex: 1 1 420px; min-width: 0; }
+.finder-wrap { display: flex; flex: 0 1 300px; min-width: 0; }
+input.finder { flex: 1; min-width: 0; border: 1px solid var(--rule-strong); background: var(--sheet); color: var(--ink); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 14px; }
+input.finder:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+@media (max-width: 600px) { .finder-wrap { flex: 1 1 100%; } }
+.stage-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 18px; align-items: start; }
+.stage-top .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.route-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.chart.route-map { height: 350px; }
+.chart.nation-map { height: 460px; }
+.map-tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.map-tile { border: 1px solid var(--rule-strong); border-radius: 8px; padding: 4px 10px; font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; }
+.map-tile[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 1px; }
+@media (max-width: 900px) { .stage-top { grid-template-columns: 1fr; } .chart.route-map { height: 330px; } .chart.nation-map { height: 380px; } }
+.story-empty { margin: 10px 0 0; padding: 8px 12px; border: 1px dashed var(--rule-strong); border-radius: 8px; color: var(--ink-2); }
 
 /* ---------- tables ---------- */
 .tbl-wrap { overflow-x: auto; min-width: 0; }
@@ -360,3 +376,4 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
   .panel { padding: 14px 14px 16px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (max-width: 600px) { .panel-tools { width: 100%; min-width: 0; } .panel-tools select.sel { width: 100%; min-width: 0; } }

@@ -148,6 +148,61 @@
     }
   }
   const redrawAll = () => charts.forEach(draw);
+
+  /* =================== maps (route and nations) =================== */
+  const GEO = window.TDF_DATA.geo;
+  let mapsReady = false;
+  function ensureMaps() {
+    if (!mapsReady && window.echarts && GEO) { window.echarts.registerMap('tdf-fr', GEO.fr); window.echarts.registerMap('tdf-eu', GEO.eu); mapsReady = true; }
+  }
+  // sequential colour for a 0..1 share, and a readable label colour on top of it
+  function seqColor(t, x) {
+    const k = Math.max(0, Math.min(1, x)) * (t.seq.length - 1), i = Math.min(t.seq.length - 2, Math.floor(k));
+    return blend(t.seq[i], t.seq[i + 1], k - i);
+  }
+  function onColor(hex) {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5 ? '#14181d' : '#ffffff';
+  }
+  // a small loop for stages that start and finish in the same town
+  const loopRing = ([lon, lat]) => Array.from({ length: 17 }, (_, i) => { const a = (i / 16) * 2 * Math.PI; return [lon + (0.16 * Math.cos(a)) / 0.69, lat + 0.15 + 0.16 * Math.sin(a)]; });
+  function routeOption(t, sel) {
+    ensureMaps();
+    const P = GEO.places, B = GEO.badges;
+    const lines = E.stages.map((s) => {
+      const on = s.id === sel;
+      return { coords: B[s.id].loop ? loopRing(P[s.start]) : [P[s.start], P[s.finish]], stage: s.id,
+        lineStyle: { color: t.terr[s.code], width: on ? 5 : 2.5, opacity: on ? 1 : 0.45 } };
+    });
+    const leaders = E.stages.filter((s) => Math.hypot(B[s.id].at[0] - B[s.id].anchor[0], B[s.id].at[1] - B[s.id].anchor[1]) > 0.05)
+      .map((s) => ({ coords: [B[s.id].anchor, B[s.id].at], lineStyle: { color: t.ruleStrong, width: 1, opacity: 0.8 } }));
+    const badges = E.stages.map((s) => {
+      const on = s.id === sel;
+      return { value: B[s.id].at, stage: s.id, symbolSize: on ? 26 : 18, z: on ? 10 : 5,
+        itemStyle: { color: t.terr[s.code], borderColor: on ? t.ink : t.sheet, borderWidth: on ? 2.5 : 1.5, opacity: on ? 1 : 0.9 },
+        label: { show: true, formatter: String(s.id), color: '#fff', fontSize: on ? 12 : 10, fontWeight: 700 } };
+    });
+    const st = E.stageById.get(sel);
+    const towns = (st.start === st.finish ? [[st.start, 'right']] : [[st.start, 'left'], [st.finish, 'right']]).map(([n, pos], i) => ({
+      value: P[n], name: n, label: { show: true, position: P[n][0] > 6 ? 'left' : pos, formatter: (st.start === st.finish ? '' : i ? 'Finish: ' : 'Start: ') + n,
+        color: t.ink, fontSize: 11, fontWeight: 600, textBorderColor: t.sheet, textBorderWidth: 3 } }));
+    return Object.assign(base(t), {
+      geo: { map: 'tdf-fr', roam: false, silent: true, aspectScale: 0.69, layoutCenter: ['50%', '50%'], layoutSize: '100%',
+        itemStyle: { areaColor: t.sheet2, borderColor: t.ruleStrong, borderWidth: 0.6 },
+        regions: [{ name: 'France', itemStyle: { areaColor: blend(t.maillot, t.sheet, 0.8), borderColor: t.ruleStrong } }] },
+      tooltip: Object.assign(base(t).tooltip, { trigger: 'item', formatter: (p) => {
+        const s = p.data && p.data.stage && E.stageById.get(p.data.stage);
+        if (!s) return p.data && p.data.name ? esc(p.data.name) : '';
+        return tipHead(`Stage ${s.id} · ${TL[s.code]}`) + `<div>${esc(s.route)} · ${s.distance.toFixed(0)} km</div>` + tipRow(t.terr[s.code], 'Winner', R(s.winnerBib).name);
+      } }),
+      series: [
+        { type: 'lines', coordinateSystem: 'geo', polyline: true, silent: true, data: leaders, z: 2 },
+        { type: 'lines', coordinateSystem: 'geo', polyline: true, data: lines, z: 3, emphasis: { lineStyle: { width: 5, opacity: 1 } } },
+        { type: 'scatter', coordinateSystem: 'geo', data: badges, z: 5, emphasis: { scale: 1.15 } },
+        { type: 'scatter', coordinateSystem: 'geo', data: towns, symbolSize: 7, itemStyle: { color: t.ink }, silent: true, z: 6 },
+      ],
+    });
+  }
   if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawAll);
   new MutationObserver(redrawAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
 
@@ -478,12 +533,30 @@
     drawPivot();
 
     // E10 storyline
-    const story = panel({ title: 'The fight for yellow, stage by stage', fn: [['E10', 'Temporal GC storyline']], sub: 'Minutes behind the race leader after each stage. Shaded bands are mountain stages (red) and time trials (violet). Pick up to six riders.' });
+    const story = panel({ title: 'The fight for yellow, stage by stage', fn: [['E10', 'Temporal GC storyline']], sub: 'Minutes behind the race leader after each stage. Shaded bands are mountain stages (red) and time trials (violet). Pick up to six riders: use the buttons, search any of the 184 starters, or click a row in the standings above.' });
     const chipsBox = h('div', { class: 'chips' });
+    // search any starter, including riders who left the race (their line stops at their last stage)
+    const pickLabel = (r) => `${r.name} · ${teamShort(r.team)} · ${r.finished ? `#${r.gcRank} overall` : r.status.toLowerCase()}`;
+    const byLabel = new Map();
+    const finderList = h('datalist', { id: 'story-riders' });
+    [...E.riders].sort((a, b) => (a.gcRank ?? 999) - (b.gcRank ?? 999) || a.name.localeCompare(b.name)).forEach((r) => {
+      const l = pickLabel(r); byLabel.set(l, r.bib); finderList.appendChild(h('option', { value: l }));
+    });
+    const finder = h('input', { type: 'search', class: 'finder', id: 'story-find', list: 'story-riders', placeholder: 'Find any rider…', autocomplete: 'off', 'aria-label': 'Find any rider to add to the chart' });
+    const pick = () => { const bib = byLabel.get(finder.value); if (bib != null) { addStory(bib); finder.value = ''; } };
+    finder.addEventListener('input', pick);
+    finder.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const q = finder.value.trim().toLowerCase(); if (!q) return;
+      const hit = [...byLabel.keys()].find((l) => l.toLowerCase().includes(q));
+      if (hit) { finder.value = hit; pick(); }
+    });
+    const pickRow = h('div', { class: 'story-pick' }, chipsBox, h('label', { class: 'field finder-wrap', for: 'story-find' }, h('span', { text: 'Add' }), finder), finderList);
     const storyBox = chartBox('tall');
     const ribbon = h('div', { class: 'yellow-ribbon', 'aria-label': 'Yellow jersey after each stage' });
     E.leaders.forEach((l) => ribbon.appendChild(h('div', { class: l.changed || l.stage === 1 ? 'chg' : null, title: `After stage ${l.stage}: ${R(l.bib).name} (lead ${fmtGap(l.margin)})`, text: R(l.bib).short })));
-    add(story.body, chipsBox, storyBox, h('p', { class: 'note', text: 'Yellow jersey after each stage (bold = new leader):' }), ribbon);
+    const emptyNote = h('p', { class: 'note story-empty', role: 'status' });
+    add(story.body, pickRow, emptyNote, storyBox, h('p', { class: 'note', text: 'Yellow jersey after each stage (bold = new leader):' }), ribbon);
     root.appendChild(story.el);
     const slots = new Map();
     S.story = E.gcFinal.slice(0, 5).map((e) => e.bib);
@@ -498,35 +571,47 @@
     }
     function drawChips() {
       clear(chipsBox);
+      emptyNote.textContent = S.story.length ? '' : 'No riders picked. Add up to six with the buttons, the search box or the standings above.';
+      emptyNote.hidden = S.story.length > 0;
       const cands = [...new Set([...E.gcFinal.slice(0, 12).map((e) => e.bib), ...S.story])];
       const t = tokens();
       cands.forEach((b) => {
         const on = S.story.includes(b);
-        chipsBox.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), on: { click: () => {
+        const r = R(b);
+        chipsBox.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), title: r.finished ? `${r.name}: #${r.gcRank} overall` : `${r.name}: ${r.status.toLowerCase()}`, on: { click: () => {
           if (on) { S.story = S.story.filter((x) => x !== b); slots.delete(b); drawChips(); redraw(storyChart); } else addStory(b);
-        } } }, h('span', { class: 'sw', style: `background:${on ? t.s[slots.get(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), R(b).short));
+        } } }, h('span', { class: 'sw', style: `background:${on ? t.s[slots.get(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), r.finished ? r.short : `${r.short} (out)`));
       });
     }
     drawChips();
     const storyChart = chart(storyBox, (t) => {
       const bands = (code, color) => E.stages.filter((s) => s.code === code).map((s) => [{ xAxis: s.id - 0.5, itemStyle: { color: blend(color, t.sheet, 0.86) } }, { xAxis: s.id + 0.5 }]);
-      const series = S.story.map((bib, i) => ({
-        type: 'line', name: R(bib).short, showSymbol: false, symbolSize: 8, lineStyle: { width: 2, color: t.s[slots.get(bib)] }, itemStyle: { color: t.s[slots.get(bib)] },
-        emphasis: { focus: 'series' }, endLabel: { show: true, formatter: R(bib).short, color: t.ink2, fontSize: 12 },
-        data: E.stages.map((s) => { const e = E.gcPositionAfter(bib, s.id); return e ? [s.id, mins(e.gap)] : [s.id, null]; }),
-        markArea: i === 0 ? { silent: true, data: [...bands('mountain', t.terr.mountain), ...bands('itt', t.terr.itt)] } : undefined,
-      }));
+      // riders who left the race get points only for the stages they completed, so their line simply stops
+      const series = S.story.map((bib) => {
+        const r = R(bib);
+        return {
+          type: 'line', name: r.short, showSymbol: !r.finished, symbolSize: 6, lineStyle: { width: 2, color: t.s[slots.get(bib)] }, itemStyle: { color: t.s[slots.get(bib)] },
+          emphasis: { focus: 'series' }, endLabel: { show: true, formatter: r.finished ? r.short : `${r.short} · out`, color: t.ink2, fontSize: 12 },
+          data: E.stages.map((s) => { const e = E.gcPositionAfter(bib, s.id); return e ? [s.id, mins(e.gap)] : null; }).filter(Boolean),
+        };
+      });
+      // the stage bands sit on their own empty series so they stay visible when no rider is picked
+      series.unshift({ type: 'line', name: 'stage types', data: [], silent: true, tooltip: { show: false },
+        markArea: { silent: true, data: [...bands('mountain', t.terr.mountain), ...bands('itt', t.terr.itt)] } });
+      const empty = S.story.length === 0;
       return Object.assign(base(t), {
         grid: { left: 8, right: 90, top: 20, bottom: 6, containLabel: true },
         xAxis: axisVal(t, { min: 0.5, max: 21.5, splitLine: { show: false }, axisLine: { show: true, lineStyle: { color: t.axis } },
           axisTick: { show: true, customValues: E.stages.map((s) => s.id), lineStyle: { color: t.axis } },
           axisLabel: { color: t.ink2, customValues: E.stages.map((s) => s.id) }, name: 'Stage', nameLocation: 'middle', nameGap: 26 }),
-        yAxis: axisY(t, { inverse: true, name: 'minutes behind', nameLocation: 'start', nameGap: 10, min: 0 }),
+        yAxis: axisY(t, Object.assign({ inverse: true, name: 'minutes behind', nameLocation: 'start', nameGap: 10, min: 0 }, empty ? { max: 10 } : {})),
         tooltip: Object.assign(base(t).tooltip, { trigger: 'axis', axisPointer: { type: 'line', lineStyle: { color: t.ruleStrong } }, formatter: (ps) => {
+          if (!ps.length) return '';
           const sid = Math.round(ps[0].axisValue); const s2 = E.stageById.get(sid);
           if (!s2) return '';
-          const rows = ps.filter((p) => p.value[1] != null).sort((a, b) => a.value[1] - b.value[1]);
-          return tipHead(`After stage ${sid} · ${TL[s2.code]}`) + rows.map((p) => tipRow(p.color, p.seriesName, p.value[1] === 0 ? 'leader' : `+${p.value[1].toFixed(2)} min`)).join('');
+          const rows = ps.filter((p) => p.value && p.value[0] === sid && p.value[1] != null).sort((a, b) => a.value[1] - b.value[1]);
+          const out = S.story.filter((bib) => !E.gcPositionAfter(bib, sid)).map((bib) => tipRow(t.s[slots.get(bib)], R(bib).short, R(bib).status.toLowerCase()));
+          return tipHead(`After stage ${sid} · ${TL[s2.code]}`) + rows.map((p) => tipRow(p.color, p.seriesName, p.value[1] === 0 ? 'leader' : `+${p.value[1].toFixed(2)} min`)).join('') + out.join('');
         } }),
         series,
       });
@@ -586,21 +671,25 @@
     add(root, h('div', { class: 'view-head' }, h('div', null,
       h('p', { class: 'eyebrow', text: 'Stage-winner markets' }),
       h('h1', { text: 'One stage at a time' }),
-      h('p', { class: 'lede', text: 'Open any stage to see who won, by how much and which teams filled the top 10. The explorer below rolls stages up by terrain and drills down to the riders.' }))));
+      h('p', { class: 'lede', text: 'Pick a stage on the route map to see who won, by how much and which teams filled the top 10. The explorer below rolls stages up by terrain and drills down to the riders.' }))));
 
     const sp = panel({ title: 'Stage in focus', fn: [['E2', 'A stage in focus']] });
     const stageSel = selectEl('stage-sel', TERR.map((c) => ({ label: TL[c], options: E.stages.filter((s) => s.code === c).map((s) => ({ value: s.id, label: `Stage ${s.id} · ${s.route}` })) })), S.stage, (v) => { S.stage = Number(v); teamFilter = null; drawStage(); }, 'Stage');
     const prev = h('button', { class: 'btn', type: 'button', text: '← Prev', on: { click: () => { if (S.stage > 1) { S.stage -= 1; teamFilter = null; drawStage(); } } } });
     const next = h('button', { class: 'btn', type: 'button', text: 'Next →', on: { click: () => { if (S.stage < 21) { S.stage += 1; teamFilter = null; drawStage(); } } } });
     add(sp.head.appendChild(h('div', { class: 'panel-tools' })), prev, stageSel, next);
-    const top = h('div');
+    const top = h('div', { style: 'min-width:0' });
+    const routeBox = h('div', { class: 'chart route-map', role: 'img', 'aria-label': 'Map of the 21 stages; select a number to open that stage' });
+    const routeWrap = h('div', { class: 'route-wrap' }, routeBox, legend(TERR.map((c) => ({ color: `var(--${c})`, label: TL[c] }))),
+      h('p', { class: 'note', text: 'Select a stage number. Lines join start and finish towns (not the roads raced); loops mark stages that start and finish in one town. Outlines: Natural Earth; towns: © OpenStreetMap contributors.' }));
+    const stageTop = h('div', { class: 'stage-top' }, top, routeWrap);
     const split = h('div', { class: 'split' });
     const left = h('div', { style: 'display:flex;flex-direction:column;gap:10px;min-width:0' });
     const right = h('div', { style: 'display:flex;flex-direction:column;gap:10px;min-width:0' });
     add(split, left, right);
-    add(sp.body, top, split);
+    add(sp.body, stageTop, split);
     root.appendChild(sp.el);
-    let depth = 10, teamFilter = null, teamChart;
+    let depth = 10, teamFilter = null, teamChart, routeChart;
     const teamBox = chartBox('short');
     function drawStage() {
       stageSel.value = String(S.stage);
@@ -648,6 +737,8 @@
           });
         }, { onClick: (p) => { const list = E.stageDetail(S.stage).teamsTop10.slice().reverse(); teamFilter = list[p.dataIndex].team; drawStage(); } });
       } else redraw(teamChart);
+      if (!routeChart) routeChart = chart(routeBox, (t) => routeOption(t, S.stage), { onClick: (p) => { if (p.data && p.data.stage) { S.stage = p.data.stage; teamFilter = null; drawStage(); } } });
+      else redraw(routeChart);
     }
     hooks.stage = () => { if (built.has('stages')) { teamFilter = null; drawStage(); } };
     drawStage();
@@ -995,31 +1086,37 @@
       });
     });
 
-    // points: official vs finish-line estimate
-    const pp = panel({ title: 'Green jersey: finish-line points vs official', span: 7, sub: 'Our data has stage-finish points only (official 2025 scale per stage). The rest of a rider’s official total came from intermediate sprints.' });
+    // points: published total = stage-finish points (race data) + points won elsewhere (intermediate sprints)
+    const pTop = E.published.points.slice(0, 15);
+    const shareOf = (o) => R(o.bib).otherPoints / o.points;
+    const bySprint = pTop.slice().sort((a, b) => shareOf(b) - shareOf(a) || b.rank - a.rank);
+    const pp = panel({ title: 'Green jersey: where the points came from', span: 7, sub: 'Published final points, top 15. Grey = stage-finish points from our race data (official 2025 scale per stage); green = points won away from the finish, at intermediate sprints (published total minus finish points).' });
     const ppBox = chartBox('tall');
-    add(pp.body, legend([{ color: 'var(--green)', label: 'Official points' }, { color: 'var(--rule-strong)', label: 'Finish-line points in our data' }]), ppBox);
+    const w0 = pTop[0], fin0 = bySprint[bySprint.length - 1];
+    add(pp.body, legend([{ color: 'var(--rule-strong)', label: 'Stage finishes (race data)' }, { color: 'var(--green)', label: 'Intermediate sprints' }]), ppBox,
+      h('p', { class: 'verdict' }, `${R(w0.bib).short} won green with ${w0.points} points, ${Math.round(shareOf(w0) * 100)}% of them at intermediate sprints. ${R(bySprint[0].bib).short} took ${Math.round(shareOf(bySprint[0]) * 100)}% of his there; ${R(fin0.bib).short} scored ${shareOf(fin0) === 0 ? 'all' : `${Math.round((1 - shareOf(fin0)) * 100)}%`} of his at stage finishes. For the green market, look for riders who also chase points mid-stage, not only stage winners.`));
     root.appendChild(pp.el);
     chart(ppBox, (t) => {
-      const rows = off('points').slice().reverse();
+      const rows = pTop.slice().reverse();
       return Object.assign(base(t), {
-        grid: { left: 8, right: 36, top: 6, bottom: 6, containLabel: true },
+        grid: { left: 8, right: 40, top: 6, bottom: 6, containLabel: true },
         xAxis: axisVal(t, {}), yAxis: axisCat(t, rows.map((o) => R(o.bib).short)),
-        tooltip: Object.assign(base(t).tooltip, { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: blend(t.ink, t.sheet, 0.94) } }, formatter: (ps) => { const o = rows[ps[0].dataIndex]; const f = R(o.bib).points; return tipHead(R(o.bib).name) + tipRow(t.green, 'Official', o.num) + tipRow(t.ruleStrong, 'Finish-line (data)', f) + tipRow(null, 'From intermediate sprints', o.num - f); } }),
+        tooltip: Object.assign(base(t).tooltip, { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: blend(t.ink, t.sheet, 0.94) } }, formatter: (ps) => { const o = rows[ps[0].dataIndex]; const r = R(o.bib); return tipHead(`${r.name} · ${ordinal(o.rank)} in points`) + tipRow(null, 'Published total', o.points) + tipRow(t.ruleStrong, 'Stage finishes (data)', r.points) + tipRow(t.green, 'Intermediate sprints', r.otherPoints); } }),
         series: [
-          { type: 'bar', name: 'Official', barMaxWidth: 12, data: rows.map((o) => o.num), itemStyle: { color: t.green, borderRadius: [0, 4, 4, 0] }, label: { show: true, position: 'right', color: t.ink2 } },
-          { type: 'bar', name: 'Finish-line', barMaxWidth: 12, data: rows.map((o) => R(o.bib).points), itemStyle: { color: t.ruleStrong, borderRadius: [0, 4, 4, 0] } },
+          { type: 'bar', stack: 'p', name: 'Stage finishes', barMaxWidth: 14, data: rows.map((o) => R(o.bib).points), itemStyle: { color: t.ruleStrong } },
+          { type: 'bar', stack: 'p', name: 'Intermediate sprints', barMaxWidth: 14, data: rows.map((o) => R(o.bib).otherPoints), itemStyle: { color: t.green, borderRadius: [0, 4, 4, 0] },
+            label: { show: true, position: 'right', color: t.ink2, formatter: (p) => String(rows[p.dataIndex].points) } },
         ],
       });
-    });
-    const kp = panel({ title: 'Polka-dot jersey vs mountain-stage results', span: 5, sub: 'Official mountain points, beside each rider’s place in our mountains-only standing and their podiums on mountain stages.' });
+    }, { onClick: (p) => openRider(pTop.slice().reverse()[p.dataIndex].bib) });
+    const kp = panel({ title: 'Polka-dot jersey vs mountain-stage results', span: 5, sub: 'Published mountain points (top 15) beside each rider’s place in our mountains-only standing and their podiums on mountain stages.' });
     add(kp.body, tbl([
       { label: 'Pos', render: (o) => String(o.rank), cls: 'pos' },
       { label: 'Rider', render: (o) => riderEl(o.bib, { bib: false }) },
-      { label: 'Points', n: true, render: (o) => String(o.num) },
+      { label: 'Points', n: true, render: (o) => String(o.points) },
       { label: 'Mtn only', n: true, render: (o) => (R(o.bib).mountainRank ? ordinal(R(o.bib).mountainRank) : '–') },
       { label: 'Mtn podiums', n: true, render: (o) => String(R(o.bib).terrain.mountain ? R(o.bib).terrain.mountain.podiums : 0) },
-    ], off('kom')), h('p', { class: 'note', text: 'Climb points are not in the race data, so the polka-dot market can only be read through mountain-stage results. Riders who hunt climb points in breakaways (Martinez) rank low on time.' }));
+    ], E.published.kom.slice(0, 15)), h('p', { class: 'note', text: `Climb points are not in the race data, so this market can only be read through mountain-stage results. Riders who hunt climb points in breakaways (Martinez) rank low on time. Full standings: ${E.published.kom.length} riders scored mountain points, ${E.published.points.length} scored green-jersey points.` }));
     root.appendChild(kp.el);
   };
 
@@ -1435,34 +1532,85 @@
       tile('Most riders', most.name, `${most.riders} riders`, true),
       tile('Most stage wins', E.nations[0].name, `${E.nations[0].wins} stages`, true)));
 
-    const rp = panel({ title: 'Riders per nation', fn: [['E8', 'Participation by nation']], span: 6 });
-    const rpBox = h('div', { class: 'chart', style: `height:${Math.max(360, ns.length * 20 + 30)}px` });
-    add(rp.body, rpBox);
-    const tp = panel({ title: 'Teams per country', fn: [['E8', 'Participation by nation']], span: 6, sub: 'By the country each team is registered in.' });
-    const tpBox = chartBox();
-    add(tp.body, tpBox);
-    root.appendChild(rp.el); root.appendChild(tp.el);
-    let selNation = E.nations[0].code;
-    const hbar = (list, val, color, onPick) => (t) => {
-      const l = list.slice().reverse();
-      return Object.assign(base(t), {
-        grid: { left: 8, right: 30, top: 6, bottom: 6, containLabel: true },
-        xAxis: axisVal(t, { minInterval: 1 }), yAxis: axisCat(t, l.map((n) => n.name), { axisLabel: { color: t.ink2, fontSize: 11 } }),
-        tooltip: Object.assign(base(t).tooltip, { formatter: (p) => { const n = l[p.dataIndex]; return tipHead(n.name) + tipRow(null, 'Riders', n.riders) + tipRow(null, 'Teams registered', n.teams) + tipRow(null, 'Stage wins', n.wins); } }),
-        series: [{ type: 'bar', barMaxWidth: 14, data: l.map((n) => ({ value: val(n), itemStyle: { color: n.code === selNation ? t.ink : color(t), borderRadius: [0, 4, 4, 0] } })), label: { show: true, position: 'right', color: t.ink2, fontSize: 11 } }],
-      });
+    // map + ranked bars share one measure; both drill down to a nation
+    const startsBy = new Map();
+    E.riders.forEach((r) => startsBy.set(r.country, (startsBy.get(r.country) || 0) + r.starts));
+    const MIN_STARTS = 40;
+    const rateOf = (n) => { const st = startsBy.get(n.code) || 0; return st >= MIN_STARTS ? (n.top10s / st) * 100 : null; };
+    const MEAS = {
+      riders: { label: 'Riders', title: 'Riders per nationality', val: (n) => n.riders, fmt: (v) => String(v) },
+      teams: { label: 'Teams', title: 'Teams per registration country', val: (n) => n.teams, fmt: (v) => String(v) },
+      wins: { label: 'Stage wins', title: 'Stage wins per nation', val: (n) => n.wins, fmt: (v) => String(v) },
+      rate: { label: 'Top-10s per 100 starts', title: 'Top-10 finishes per 100 stage starts', val: rateOf, fmt: (v) => v.toFixed(1) },
     };
-    const byRiders = ns.slice().sort((a, b) => b.riders - a.riders || a.name.localeCompare(b.name));
-    const byTeams = teamCountries.slice().sort((a, b) => b.teams - a.teams || a.name.localeCompare(b.name));
-    const c1 = chart(rpBox, hbar(byRiders, (n) => n.riders, (t) => t.s[0]), { onClick: (p) => pickNation(byRiders.slice().reverse()[p.dataIndex].code) });
-    const c2 = chart(tpBox, hbar(byTeams, (n) => n.teams, (t) => t.s[2]), { onClick: (p) => pickNation(byTeams.slice().reverse()[p.dataIndex].code) });
+    let meas = 'riders';
+    const pool = E.nations.filter((n) => n.riders > 0 || n.teams > 0);
+    const valOf = (n) => MEAS[meas].val(n);
+    const mp = panel({ title: 'Where the riders and teams come from', fn: [['E8', 'Participation by nation'], ['E9', 'National outcomes']], span: 7, sub: 'Shade the map by participation or by results. Select a country to drill down to its riders below.' });
+    mp.head.appendChild(h('div', { class: 'panel-tools' }, seg(Object.entries(MEAS).map(([k, m]) => ({ value: k, label: m.label })), meas, (v) => { meas = v; drawMeas(); }, 'Measure')));
+    const mapBox = h('div', { class: 'chart nation-map', role: 'img', 'aria-label': 'Map of Europe shaded by the selected measure' });
+    const tilesBox = h('div', { class: 'map-tiles' });
+    add(mp.body, mapBox, h('p', { class: 'note', text: 'Outside this map:' }), tilesBox, h('p', { class: 'note', text: `Top-10s per 100 starts counts one rider on one stage as a start; nations with fewer than ${MIN_STARTS} starts (about two riders) are left blank. Outlines: Natural Earth.` }));
+    const bp = panel({ title: MEAS.riders.title, span: 5 });
+    const bpBox = h('div', { class: 'chart' });
+    add(bp.body, bpBox);
+    root.appendChild(mp.el); root.appendChild(bp.el);
+    let selNation = E.nations[0].code;
+    const ranked = () => pool.filter((n) => (valOf(n) ?? 0) > 0).sort((a, b) => valOf(b) - valOf(a) || a.name.localeCompare(b.name));
+    const maxVal = () => Math.max(1e-9, ...pool.map((n) => valOf(n) ?? 0));
+    const c1 = chart(mapBox, (t) => {
+      ensureMaps();
+      const mx = maxVal();
+      const data = pool.filter((n) => GEO.euNames[n.code]).map((n) => {
+        const v = valOf(n), on = n.code === selNation, fill = v ? seqColor(t, 0.12 + 0.88 * (v / mx)) : t.sheet2;
+        return { name: GEO.euNames[n.code], value: v, code: n.code,
+          itemStyle: { areaColor: fill, borderColor: on ? t.ink : t.sheet, borderWidth: on ? 2 : 0.8 },
+          label: { show: !!v, formatter: v ? MEAS[meas].fmt(v) : '', color: v ? onColor(fill) : t.ink, fontSize: 11, fontWeight: 600 } };
+      });
+      return Object.assign(base(t), {
+        tooltip: Object.assign(base(t).tooltip, { trigger: 'item', formatter: (p) => {
+          const n = p.data && E.nations.find((x) => x.code === p.data.code);
+          if (!n) return esc(p.name);
+          const r = rateOf(n);
+          return tipHead(n.name) + tipRow(null, 'Riders', n.riders) + tipRow(null, 'Teams registered', n.teams) + tipRow(null, 'Stage wins', n.wins) + tipRow(null, 'Top-10s per 100 starts', r == null ? 'too few starts' : r.toFixed(1));
+        } }),
+        series: [{ type: 'map', map: 'tdf-eu', roam: false, aspectScale: 0.62, layoutCenter: ['50%', '50%'], layoutSize: '100%', selectedMode: false,
+          itemStyle: { areaColor: t.sheet2, borderColor: t.sheet, borderWidth: 0.8 }, label: { show: false },
+          emphasis: { label: { show: true }, itemStyle: { areaColor: blend(t.maillot, t.sheet, 0.35) } }, data }],
+      });
+    }, { onClick: (p) => { if (p.data && p.data.code) pickNation(p.data.code); } });
+    const c2 = chart(bpBox, (t) => {
+      const l = ranked().reverse();
+      return Object.assign(base(t), {
+        grid: { left: 8, right: 36, top: 6, bottom: 6, containLabel: true },
+        xAxis: axisVal(t, meas === 'rate' ? {} : { minInterval: 1 }), yAxis: axisCat(t, l.map((n) => n.name), { axisLabel: { color: t.ink2, fontSize: 11 } }),
+        tooltip: Object.assign(base(t).tooltip, { formatter: (p) => { const n = l[p.dataIndex]; return tipHead(n.name) + tipRow(null, MEAS[meas].label, MEAS[meas].fmt(valOf(n))) + tipRow(null, 'Riders', n.riders); } }),
+        series: [{ type: 'bar', barMaxWidth: 14, data: l.map((n) => ({ value: valOf(n), itemStyle: { color: n.code === selNation ? t.ink : seqColor(t, 0.65), borderRadius: [0, 4, 4, 0] } })),
+          label: { show: true, position: 'right', color: t.ink2, fontSize: 11, formatter: (p) => MEAS[meas].fmt(p.value) } }],
+      });
+    }, { onClick: (p) => pickNation(ranked().reverse()[p.dataIndex].code) });
+    function drawTiles() {
+      clear(tilesBox);
+      const t = tokens(), mx = maxVal();
+      pool.filter((n) => !GEO.euNames[n.code]).sort((a, b) => (valOf(b) ?? -1) - (valOf(a) ?? -1) || a.name.localeCompare(b.name)).forEach((n) => {
+        const v = valOf(n), fill = v ? seqColor(t, 0.12 + 0.88 * (v / mx)) : t.sheet;
+        tilesBox.appendChild(h('button', { type: 'button', class: 'map-tile', 'aria-pressed': String(n.code === selNation), style: `background:${fill};color:${v ? onColor(fill) : 'var(--ink-2)'}`, on: { click: () => pickNation(n.code) } },
+          h('b', { text: v ? MEAS[meas].fmt(v) : '–' }), n.name));
+      });
+    }
+    function drawMeas() {
+      bp.head.querySelector('h2').textContent = MEAS[meas].title;
+      bpBox.style.height = `${Math.max(300, ranked().length * 19 + 30)}px`;
+      redraw(c1); redraw(c2); drawTiles();
+    }
+    drawMeas();
 
     const op = panel({ title: 'National outcomes', fn: [['E9', 'National outcomes']], span: 7, sub: 'By rider nationality. Click a row to drill down to the riders.' });
     const opBody = h('div');
     op.body.appendChild(opBody);
     const dp = panel({ title: '', span: 5 });
     root.appendChild(op.el); root.appendChild(dp.el);
-    function pickNation(code) { selNation = code; drawOut(); drawDrill(); redraw(c1); redraw(c2); }
+    function pickNation(code) { selNation = code; drawOut(); drawDrill(); redraw(c1); redraw(c2); drawTiles(); }
     function drawOut() {
       clear(opBody);
       opBody.appendChild(tbl([
@@ -1508,7 +1656,7 @@
       ['E5', 'Mountain contours', 'Terrain', '#terrain', 'Mountain podiums and mean gap to the stage winner → daily traces.'],
       ['E6', 'Speed as a simple ratio', 'Terrain', '#terrain', 'Distance ÷ time by terrain for riders and teams, indexed to the median; who gains when the road climbs.'],
       ['E7', 'Bonuses, penalties, counterfactuals', 'Outright', '#outright', 'Replay the standings to any stage without bonuses and/or penalties; moves into and out of the top 10.'],
-      ['E8', 'Participation by nation', 'Nations', '#nations', 'Riders per nationality, teams per registration country, drill to riders and teams.'],
+      ['E8', 'Participation by nation', 'Nations', '#nations', 'Map and ranked bars of riders per nationality and teams per registration country; drill to riders and teams.'],
       ['E9', 'National outcomes', 'Nations', '#nations', 'Best overall place, wins, podiums and top-10s per nation; drill to riders and stages.'],
       ['E10', 'Temporal GC storyline', 'Outright', '#outright', 'Minutes behind the leader after each stage, mountain and time-trial stages marked, yellow-jersey ribbon.'],
       ['E11', 'Against the clock', 'Stages', '#stages', 'Time-trial catalogue: date, distance, winner, speed, top five.'],
@@ -1528,9 +1676,9 @@
     const req = panel({ title: 'Task 3 requirements', span: 5 });
     add(req.body, h('dl', { class: 'kv' },
       h('dt', { text: 'a. Drill-down' }), h('dd', { text: 'Stages: terrain → stage → rider explorer; overall → rider → stage (E1); team → rider → stage (E3, E14); nation → rider (E9); rider profile from any name.' }),
-      h('dt', { text: 'b. Classifications' }), h('dd', { text: 'Jerseys: official top 10 for overall, points, mountains, young rider and teams; parallel ranks (E4); points and mountains compared with race data.' }),
+      h('dt', { text: 'b. Classifications' }), h('dd', { text: 'Jerseys: official top 10 for overall, points, mountains, young rider and teams; full published points and mountains standings; parallel ranks (E4); green points split into stage finishes and intermediate sprints.' }),
       h('dt', { text: 'c. Cumulative times' }), h('dd', { text: 'Outright: cumulative time after every stage (E10); teams: team classification and running team time; head-to-head running gaps.' }),
-      h('dt', { text: 'd. Countries' }), h('dd', { text: 'Nations: riders per nationality and teams per country (E8), outcomes (E9).' }),
+      h('dt', { text: 'd. Countries' }), h('dd', { text: 'Nations: map and ranked bars of riders per nationality, teams per country, stage wins and top-10 rate (E8, E9); outcomes table and drill-down to riders. Stages: route map of all 21 stages.' }),
       h('dt', { text: 'e. Design' }), h('dd', { text: 'One colour per terrain with matching icons, jersey colours for classifications, light and dark themes, phone layout.' })));
     root.appendChild(req.el);
 
@@ -1552,7 +1700,7 @@
     add(cv.body, h('div', { class: 'prose' }, h('ul', null,
       h('li', { text: 'One season only: 7 flat, 6 hilly, 6 mountain stages and 2 time trials. Treat rates as signals, not probabilities.' }),
       h('li', { text: 'Stage 21 was timed for the overall 50.3 km from the finish because rain was forecast, so the data’s total times are about an hour longer than the official ones. Every gap is unchanged.' }),
-      h('li', { text: 'No intermediate-sprint or climb points in the data, so the green and polka-dot jerseys use official standings.' }),
+      h('li', { text: 'No intermediate-sprint or climb points in the data, so the green and polka-dot jerseys use published standings. The full lists come from CyclingDB (collected by our teammate Jay); their top 10s are identical to the official results.' }),
       h('li', { text: 'Aleksandr Vlasov has no nationality in the source data and is listed as “Not specified”.' }),
       h('li', { text: 'Filippo Ganna and Stefan Bissegger left on stage 1 and have no results.' }),
       h('li', null, h('b', { text: 'Responsible gambling: ' }), 'this is a university analytics project. Past results do not guarantee future ones. Only bet what you can afford to lose.'))));
@@ -1561,7 +1709,9 @@
     const src = panel({ title: 'Data sources' });
     add(src.body, h('div', { class: 'prose' }, h('ul', null,
       h('li', { text: 'Race results: BT5110 course CSVs (riders, individual results, exits), cleaned by Group 31 into rider, team, stage, result, exit and country tables; 184 riders, 3,602 stage results, 24 exits.' }),
-      h('li', null, 'Official final classifications: ', [...new Set(E.official.map((o) => o.url))].map((u, i) => [i ? ', ' : '', h('a', { href: u, target: '_blank', rel: 'noopener', text: u.replace(/^https?:\/\//, '').slice(0, 70) })]), '. Cross-checked against RTÉ, cyclingstage and NBC Sports. The 2025 race regulations give the points scales, the young-rider rule and the team method.'))));
+      h('li', null, 'Official final classifications: ', [...new Set(E.official.map((o) => o.url))].map((u, i) => [i ? ', ' : '', h('a', { href: u, target: '_blank', rel: 'noopener', text: u.replace(/^https?:\/\//, '').slice(0, 70) })]), '. Cross-checked against RTÉ, cyclingstage and NBC Sports. The 2025 race regulations give the points scales, the young-rider rule and the team method.'),
+      h('li', null, 'Full points and mountains standings (132 and 55 riders): ', h('a', { href: 'https://cyclingdb.com/race/tour-de-france/2025/points', target: '_blank', rel: 'noopener', text: 'CyclingDB points' }), ', ', h('a', { href: 'https://cyclingdb.com/race/tour-de-france/2025/kom', target: '_blank', rel: 'noopener', text: 'CyclingDB mountains' }), ', as collected for our teammate Jay’s dashboard; top 10s identical to the official results.'),
+      h('li', null, 'Maps: country outlines from ', h('a', { href: 'https://www.naturalearthdata.com/', target: '_blank', rel: 'noopener', text: 'Natural Earth' }), ' (via world-atlas); stage town positions © ', h('a', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener', text: 'OpenStreetMap contributors' }), ' (Nominatim).'))));
     root.appendChild(src.el);
   };
 
@@ -1590,7 +1740,9 @@
       h('div', { class: 'tiles' },
         tile('Overall', r.gcRank ? ordinal(r.gcRank) : '–', r.gcRank ? (r.gcRank === 1 ? fmtTime(r.gcTotal) : fmtGap(r.gcGap)) : r.status, true),
         tile('Stage wins', String(r.wins), `${r.podiums} podiums`, true),
-        tile('Top-10s', `${r.top10s}/${r.starts}`, r.starts ? `avg placing ${r.avgRank.toFixed(1)}` : 'no stages finished', true)));
+        tile('Top-10s', `${r.top10s}/${r.starts}`, r.starts ? `avg placing ${r.avgRank.toFixed(1)}` : 'no stages finished', true),
+        tile('Green points', r.pubPoints ? String(r.pubPoints.points) : '–', r.pubPoints ? `${ordinal(r.pubPoints.rank)} · ${r.otherPoints} from sprints` : (r.finished ? 'not classified' : 'left the race'), true),
+        tile('Mountain points', r.pubKom ? String(r.pubKom.points) : '–', r.pubKom ? `${ordinal(r.pubKom.rank)} in the mountains` : 'none scored', true)));
     if (!rows.length) { drawer.appendChild(h('p', { class: 'note', text: `${r.name} left the race on stage 1 and has no results.` })); close.focus(); return; }
     const t0 = tokens();
     const b1 = chartBox('short');

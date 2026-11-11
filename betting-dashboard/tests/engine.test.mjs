@@ -279,5 +279,19 @@ check('Official classifications table loaded (50 rows, jersey winners)', (eq) =>
   gcOff.forEach((o, i) => { eq(E.gcFinal[i].bib, o.bib, `gc ${o.rank} = official`); eq(E.gcFinal[i].gap, o.num - gcOff[0].num, `gc ${o.rank} gap = official`); });
 });
 
+check('Published points and mountains standings (full lists, top 10 = official)', (eq) => {
+  eq(E.published.points.length, 132, 'points riders'); eq(E.published.kom.length, 55, 'kom riders');
+  for (const c of ['points', 'kom']) {
+    const off = E.official.filter((o) => o.c === c).sort((a, b) => a.rank - b.rank);
+    off.forEach((o, i) => { const p = E.published[c][i]; eq(`${p.rank}/${p.bib}/${p.points}`, `${o.rank}/${o.bib}/${o.num}`, `${c} ${o.rank} = official`); });
+  }
+  // published points never fall below our finish-line points; the difference is intermediate sprints
+  E.riders.filter((r) => r.pubPoints).forEach((r) => eq(r.otherPoints >= 0, true, `bib ${r.bib} otherPoints >= 0`));
+  eq(E.riderByBib.get(11).otherPoints, 0, 'Vingegaard scored only at finishes (official 182)');
+  eq(E.riderByBib.get(81).otherPoints, 212, 'Milan 372 published - 160 finish-line');
+  // riders with finish-line points but no published points all left the race (classifications list finishers only)
+  E.riders.filter((r) => r.points > 0 && !r.pubPoints).forEach((r) => eq(r.finished, false, `bib ${r.bib} unclassified only if out of the race`));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (failures.length) { console.log('\n' + failures.join('\n')); process.exit(1); }
