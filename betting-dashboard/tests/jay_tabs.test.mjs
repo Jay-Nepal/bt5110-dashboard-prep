@@ -17,7 +17,7 @@ const ctx = { module: { exports: {} } }; vm.createContext(ctx);
 vm.runInContext(block('<script id="pp-analytics">'), ctx);
 const A = ctx.module.exports.ppAnalytics(ALL.editions['2025']);
 const exp = (f) => parseCSV(fs.readFileSync(path.join(here, 'expected', f), 'utf8'));
-const CLEAN = path.join(ROOT, 'data', 'cleaned');
+const CLEAN = [path.join(ROOT, 'data', 'cleaned'), path.join(ROOT, 'cleaned')].find((d) => fs.existsSync(path.join(d, 'result.csv')));
 const clean = (f) => parseCSV(fs.readFileSync(path.join(CLEAN, f), 'utf8'));
 const require = createRequire(import.meta.url);
 const engine = require('../src/engine.js').createEngine(loadData());
