@@ -39,6 +39,7 @@ Click any rider name to open their profile (drill-through). E13 (squad depth) an
 ```
 node build.mjs
 node tests/engine.test.mjs          # 25 checks, all must pass
+node tests/jay_tabs.test.mjs        # 14 checks on pages 02-05 of ../jay.html (Peloton & Pronostics)
 python -P tests/extra_truth.py      # optional: regenerate the extra reference files
 ```
 
