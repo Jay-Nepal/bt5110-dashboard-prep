@@ -283,6 +283,30 @@
     s.addEventListener('change', () => onChange(s.value));
     return s;
   }
+  // "Find any rider" box: type part of a name and pick from the list, or press Enter for the first match.
+  // Options: filter (which riders to offer), label (accessible name).
+  let finderSeq = 0;
+  function riderFinder(onPick, o) {
+    const opt = o || {};
+    const id = `rider-find-${++finderSeq}`;
+    const byLabel = new Map();
+    const list = h('datalist', { id: `${id}-list` });
+    E.riders.filter(opt.filter || (() => true)).sort((a, b) => (a.gcRank ?? 999) - (b.gcRank ?? 999) || a.name.localeCompare(b.name)).forEach((r) => {
+      const l = `${r.name} · ${teamShort(r.team)} · ${r.finished ? `#${r.gcRank} overall` : r.status.toLowerCase()}`;
+      byLabel.set(l, r.bib); list.appendChild(h('option', { value: l }));
+    });
+    const input = h('input', { type: 'search', class: 'finder', id, list: `${id}-list`, placeholder: 'Find any rider…', autocomplete: 'off', 'aria-label': opt.label || 'Find any rider to add to the chart' });
+    const pick = () => { const b = byLabel.get(input.value); if (b != null) { onPick(b); input.value = ''; } };
+    input.addEventListener('input', pick);
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const q = input.value.trim().toLowerCase(); if (!q) return;
+      const hit = [...byLabel.keys()].find((l) => l.toLowerCase().includes(q));
+      if (hit) { input.value = hit; pick(); }
+    });
+    return h('label', { class: 'field finder-wrap', for: id }, h('span', { text: 'Add' }), input, list);
+  }
+  const chipLabel = (b) => (R(b).finished ? R(b).short : `${R(b).short} (out)`);
   function tbl(cols, rows, o) {
     const opt = o || {};
     const thead = h('thead', null, h('tr', null, cols.map((c) => h('th', { class: c.n ? 'n' : null, scope: 'col', text: c.label }))));
@@ -493,7 +517,7 @@
     const pvText = h('p', { class: 'verdict' });
     const pvBox = chartBox();
     const pvNote = h('p', { class: 'note', text: 'Each bar: the rider’s adjusted time minus the median of the final top 10 that day. Below zero = faster than the contenders. Click a bar to open that stage.' });
-    add(pv.body, pvText, legend([{ color: 'var(--div-neg)', label: 'Gained on the top-10 median' }, { color: 'var(--div-pos)', label: 'Lost on the top-10 median' }]), pvBox, pvNote);
+    add(pv.body, pvText, legend([{ color: 'var(--div-neg)', label: 'Faster than the top-10 contenders (median)' }, { color: 'var(--div-pos)', label: 'Slower than the top-10 contenders (median)' }]), pvBox, pvNote);
     let pvChart;
     function drawPivot() {
       const r = R(S.outrightBib);
@@ -536,22 +560,7 @@
     const story = panel({ title: 'The fight for yellow, stage by stage', fn: [['E10', 'Temporal GC storyline']], sub: 'Minutes behind the race leader after each stage. Shaded bands are mountain stages (red) and time trials (violet). Pick up to six riders: use the buttons, search any of the 184 starters, or click a row in the standings above.' });
     const chipsBox = h('div', { class: 'chips' });
     // search any starter, including riders who left the race (their line stops at their last stage)
-    const pickLabel = (r) => `${r.name} · ${teamShort(r.team)} · ${r.finished ? `#${r.gcRank} overall` : r.status.toLowerCase()}`;
-    const byLabel = new Map();
-    const finderList = h('datalist', { id: 'story-riders' });
-    [...E.riders].sort((a, b) => (a.gcRank ?? 999) - (b.gcRank ?? 999) || a.name.localeCompare(b.name)).forEach((r) => {
-      const l = pickLabel(r); byLabel.set(l, r.bib); finderList.appendChild(h('option', { value: l }));
-    });
-    const finder = h('input', { type: 'search', class: 'finder', id: 'story-find', list: 'story-riders', placeholder: 'Find any rider…', autocomplete: 'off', 'aria-label': 'Find any rider to add to the chart' });
-    const pick = () => { const bib = byLabel.get(finder.value); if (bib != null) { addStory(bib); finder.value = ''; } };
-    finder.addEventListener('input', pick);
-    finder.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter') return;
-      const q = finder.value.trim().toLowerCase(); if (!q) return;
-      const hit = [...byLabel.keys()].find((l) => l.toLowerCase().includes(q));
-      if (hit) { finder.value = hit; pick(); }
-    });
-    const pickRow = h('div', { class: 'story-pick' }, chipsBox, h('label', { class: 'field finder-wrap', for: 'story-find' }, h('span', { text: 'Add' }), finder), finderList);
+    const pickRow = h('div', { class: 'story-pick' }, chipsBox, riderFinder((b) => addStory(b)));
     const storyBox = chartBox('tall');
     const ribbon = h('div', { class: 'yellow-ribbon', 'aria-label': 'Yellow jersey after each stage' });
     E.leaders.forEach((l) => ribbon.appendChild(h('div', { class: l.changed || l.stage === 1 ? 'chg' : null, title: `After stage ${l.stage}: ${R(l.bib).name} (lead ${fmtGap(l.margin)})`, text: R(l.bib).short })));
@@ -580,7 +589,7 @@
         const r = R(b);
         chipsBox.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), title: r.finished ? `${r.name}: #${r.gcRank} overall` : `${r.name}: ${r.status.toLowerCase()}`, on: { click: () => {
           if (on) { S.story = S.story.filter((x) => x !== b); slots.delete(b); drawChips(); redraw(storyChart); } else addStory(b);
-        } } }, h('span', { class: 'sw', style: `background:${on ? t.s[slots.get(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), r.finished ? r.short : `${r.short} (out)`));
+        } } }, h('span', { class: 'sw', style: `background:${on ? t.s[slots.get(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), chipLabel(b)));
       });
     }
     drawChips();
@@ -934,7 +943,7 @@
     }));
 
     // E6 speed by terrain
-    const spd = panel({ title: 'Speed by terrain', fn: [['E6', 'Speed as a simple ratio']], sub: 'Speed = distance ÷ time over each terrain, compared with the median finisher on the same terrain. A rider whose bar grows on mountain stages gains when the road climbs.' });
+    const spd = panel({ title: 'Speed by terrain', fn: [['E6', 'Speed as a simple ratio']], sub: 'Speed = distance ÷ time over each terrain, compared with the median finisher on the same terrain. A rider whose bar grows on mountain stages gains when the road climbs. Compare up to four riders: use the buttons or search any rider.' });
     let spdMode = 'riders';
     let pickR = [E.gcFinal[0].bib, E.gcFinal[1].bib, 81, 21];
     let pickT = [E.TEAMCLASS.list[0].team, E.TEAMCLASS.list[1].team, 'LIDL-TREK', 'SOUDAL QUICK-STEP'];
@@ -943,7 +952,8 @@
     const spdChips = h('div', { class: 'chips' });
     const spdBox = chartBox();
     const spdTable = h('div');
-    add(spd.body, spdChips, h('div', { class: 'split' }, h('div', null, spdBox), spdTable));
+    const spdFinder = riderFinder((b) => { if (!pickR.includes(b)) pickR = [...pickR, b].slice(-4); drawSpeed(); }, { filter: (r) => r.starts > 0 });
+    add(spd.body, h('div', { class: 'story-pick' }, spdChips, spdFinder), h('div', { class: 'split' }, h('div', null, spdBox), spdTable));
     root.appendChild(spd.el);
     add(spdTools, seg([{ value: 'riders', label: 'Riders' }, { value: 'teams', label: 'Teams' }], spdMode, (v) => { spdMode = v; drawSpeed(); }, 'Riders or teams'));
     const teamMedian = {};
@@ -952,10 +962,11 @@
     let spdChart;
     function drawSpeed() {
       clear(spdChips);
+      spdFinder.hidden = spdMode !== 'riders';
       const t = tokens();
       if (spdMode === 'riders') {
         const cands = [...new Set([...E.gcFinal.slice(0, 6).map((e) => e.bib), 81, 24, 21, 17, 106, 62, ...pickR])];
-        cands.forEach((b) => { const on = pickR.includes(b); spdChips.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), on: { click: () => { pickR = on ? pickR.filter((x) => x !== b) : [...pickR, b].slice(-4); drawSpeed(); } } }, h('span', { class: 'sw', style: `background:${on ? t.s[pickR.indexOf(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), R(b).short)); });
+        cands.forEach((b) => { const on = pickR.includes(b); spdChips.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), on: { click: () => { pickR = on ? pickR.filter((x) => x !== b) : [...pickR, b].slice(-4); drawSpeed(); } } }, h('span', { class: 'sw', style: `background:${on ? t.s[pickR.indexOf(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), chipLabel(b))); });
       } else {
         E.TEAMCLASS.list.forEach((x) => { const on = pickT.includes(x.team); spdChips.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), on: { click: () => { pickT = on ? pickT.filter((y) => y !== x.team) : [...pickT, x.team].slice(-4); drawSpeed(); } } }, h('span', { class: 'sw', style: `background:${on ? t.s[pickT.indexOf(x.team)] : 'transparent'};border:1px solid var(--rule-strong)` }), teamShort(x.team))); });
       }
@@ -1163,25 +1174,40 @@
     }
     drawDetail();
 
-    // week form
-    const wf = panel({ title: 'Form by week', span: 6, sub: 'Average time lost to each stage winner, per week, for the final top six. Lower is better; week 3 is where the Tour is decided.' });
-    const top6 = E.gcFinal.slice(0, 6).map((e) => e.bib);
+    // week form: final top six by default; add any rider (up to six)
+    const wf = panel({ title: 'Form by week', span: 6, sub: 'Average time lost to each stage winner, per week. Lower is better; week 3 is where the Tour is decided. Starts with the final top six; pick up to six riders.' });
+    let wfPick = E.gcFinal.slice(0, 6).map((e) => e.bib);
+    const wfChips = h('div', { class: 'chips' });
     const wfBox = chartBox();
-    add(wf.body, wfBox);
+    const wfFinder = riderFinder((b) => { if (!wfPick.includes(b)) wfPick = [...wfPick, b].slice(-6); drawWf(); }, { filter: (r) => r.starts > 0 });
+    add(wf.body, h('div', { class: 'story-pick' }, wfChips, wfFinder), wfBox);
     root.appendChild(wf.el);
-    chart(wfBox, (t) => {
-      const w = E.weekForm(top6);
-      return Object.assign(base(t), {
-        grid: { left: 8, right: 16, top: 52, bottom: 6, containLabel: true },
-        legend: { show: true, top: 0, left: 0, icon: 'roundRect', itemWidth: 14, itemHeight: 3, textStyle: { color: t.ink2 } },
-        xAxis: axisCat(t, ['Week 1 (stages 1–9)', 'Week 2 (10–15)', 'Week 3 (16–21)']),
-        yAxis: axisY(t, { inverse: true, min: 0, name: 'avg minutes lost to stage winner', nameLocation: 'start' }),
-        tooltip: Object.assign(base(t).tooltip, { trigger: 'axis', formatter: (ps) => tipHead(ps[0].axisValue) + ps.slice().sort((a, b) => a.value - b.value).map((p) => tipRow(p.color, p.seriesName, `${p.value.toFixed(2)} min`)).join('') }),
-        series: top6.map((b, i) => ({ type: 'line', name: R(b).short, symbolSize: 8, lineStyle: { width: 2, color: t.s[i] }, itemStyle: { color: t.s[i], borderColor: t.sheet, borderWidth: 2 },
-          emphasis: { focus: 'series' },
-          data: [1, 2, 3].map((k) => mins(w.find((o) => o.bib === b && o.week === k).avgGap)) })),
+    let wfChart;
+    function drawWf() {
+      clear(wfChips);
+      const t = tokens();
+      [...new Set([...E.gcFinal.slice(0, 6).map((e) => e.bib), ...wfPick])].forEach((b) => {
+        const on = wfPick.includes(b);
+        wfChips.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), on: { click: () => { wfPick = on ? wfPick.filter((x) => x !== b) : [...wfPick, b].slice(-6); drawWf(); } } },
+          h('span', { class: 'sw', style: `background:${on ? t.s[wfPick.indexOf(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), chipLabel(b)));
       });
-    });
+      if (!wfChart) wfChart = chart(wfBox, (tk) => {
+        const w = E.weekForm(wfPick);
+        // weeks a rider did not ride (left the race) have no value
+        const val = (b, k) => { const o = w.find((x) => x.bib === b && x.week === k); return o && o.n ? mins(o.avgGap) : null; };
+        return Object.assign(base(tk), {
+          grid: { left: 8, right: 16, top: 52, bottom: 6, containLabel: true },
+          legend: { show: true, top: 0, left: 0, icon: 'roundRect', itemWidth: 14, itemHeight: 3, textStyle: { color: tk.ink2 } },
+          xAxis: axisCat(tk, ['Week 1 (stages 1–9)', 'Week 2 (10–15)', 'Week 3 (16–21)']),
+          yAxis: axisY(tk, { inverse: true, min: 0, name: 'avg minutes lost to stage winner', nameLocation: 'start' }),
+          tooltip: Object.assign(base(tk).tooltip, { trigger: 'axis', formatter: (ps) => tipHead(ps[0].axisValue) + ps.filter((p) => p.value != null).sort((a, b) => a.value - b.value).map((p) => tipRow(p.color, p.seriesName, `${p.value.toFixed(2)} min`)).join('') }),
+          series: wfPick.map((b, i) => ({ type: 'line', name: chipLabel(b), symbolSize: 8, lineStyle: { width: 2, color: tk.s[i] }, itemStyle: { color: tk.s[i], borderColor: tk.sheet, borderWidth: 2 },
+            emphasis: { focus: 'series' }, data: [1, 2, 3].map((k) => val(b, k)) })),
+        });
+      });
+      else redraw(wfChart);
+    }
+    drawWf();
 
     // exits
     const ex = panel({ title: 'Riders who never reached Paris', span: 6, sub: 'Exits per stage: did not start, or abandoned during the stage. Hover a column for the names.' });
