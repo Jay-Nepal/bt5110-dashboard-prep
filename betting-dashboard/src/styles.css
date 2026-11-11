@@ -186,6 +186,13 @@ input[type="range"] { accent-color: var(--ink); width: 140px; }
 }
 .chip[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--sheet-2); }
 .chip .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.story-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.story-pick .chips { flex: 1 1 420px; min-width: 0; }
+.finder-wrap { display: flex; flex: 0 1 300px; min-width: 0; }
+input.finder { flex: 1; min-width: 0; border: 1px solid var(--rule-strong); background: var(--sheet); color: var(--ink); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 14px; }
+input.finder:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+@media (max-width: 600px) { .finder-wrap { flex: 1 1 100%; } }
+.story-empty { margin: 10px 0 0; padding: 8px 12px; border: 1px dashed var(--rule-strong); border-radius: 8px; color: var(--ink-2); }
 
 /* ---------- tables ---------- */
 .tbl-wrap { overflow-x: auto; min-width: 0; }

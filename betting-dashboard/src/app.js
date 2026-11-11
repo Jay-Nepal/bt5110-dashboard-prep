@@ -478,12 +478,30 @@
     drawPivot();
 
     // E10 storyline
-    const story = panel({ title: 'The fight for yellow, stage by stage', fn: [['E10', 'Temporal GC storyline']], sub: 'Minutes behind the race leader after each stage. Shaded bands are mountain stages (red) and time trials (violet). Pick up to six riders.' });
+    const story = panel({ title: 'The fight for yellow, stage by stage', fn: [['E10', 'Temporal GC storyline']], sub: 'Minutes behind the race leader after each stage. Shaded bands are mountain stages (red) and time trials (violet). Pick up to six riders: use the buttons, search any of the 184 starters, or click a row in the standings above.' });
     const chipsBox = h('div', { class: 'chips' });
+    // search any starter, including riders who left the race (their line stops at their last stage)
+    const pickLabel = (r) => `${r.name} · ${teamShort(r.team)} · ${r.finished ? `#${r.gcRank} overall` : r.status.toLowerCase()}`;
+    const byLabel = new Map();
+    const finderList = h('datalist', { id: 'story-riders' });
+    [...E.riders].sort((a, b) => (a.gcRank ?? 999) - (b.gcRank ?? 999) || a.name.localeCompare(b.name)).forEach((r) => {
+      const l = pickLabel(r); byLabel.set(l, r.bib); finderList.appendChild(h('option', { value: l }));
+    });
+    const finder = h('input', { type: 'search', class: 'finder', id: 'story-find', list: 'story-riders', placeholder: 'Find any rider…', autocomplete: 'off', 'aria-label': 'Find any rider to add to the chart' });
+    const pick = () => { const bib = byLabel.get(finder.value); if (bib != null) { addStory(bib); finder.value = ''; } };
+    finder.addEventListener('input', pick);
+    finder.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const q = finder.value.trim().toLowerCase(); if (!q) return;
+      const hit = [...byLabel.keys()].find((l) => l.toLowerCase().includes(q));
+      if (hit) { finder.value = hit; pick(); }
+    });
+    const pickRow = h('div', { class: 'story-pick' }, chipsBox, h('label', { class: 'field finder-wrap', for: 'story-find' }, h('span', { text: 'Add' }), finder), finderList);
     const storyBox = chartBox('tall');
     const ribbon = h('div', { class: 'yellow-ribbon', 'aria-label': 'Yellow jersey after each stage' });
     E.leaders.forEach((l) => ribbon.appendChild(h('div', { class: l.changed || l.stage === 1 ? 'chg' : null, title: `After stage ${l.stage}: ${R(l.bib).name} (lead ${fmtGap(l.margin)})`, text: R(l.bib).short })));
-    add(story.body, chipsBox, storyBox, h('p', { class: 'note', text: 'Yellow jersey after each stage (bold = new leader):' }), ribbon);
+    const emptyNote = h('p', { class: 'note story-empty', role: 'status' });
+    add(story.body, pickRow, emptyNote, storyBox, h('p', { class: 'note', text: 'Yellow jersey after each stage (bold = new leader):' }), ribbon);
     root.appendChild(story.el);
     const slots = new Map();
     S.story = E.gcFinal.slice(0, 5).map((e) => e.bib);
@@ -498,35 +516,47 @@
     }
     function drawChips() {
       clear(chipsBox);
+      emptyNote.textContent = S.story.length ? '' : 'No riders picked. Add up to six with the buttons, the search box or the standings above.';
+      emptyNote.hidden = S.story.length > 0;
       const cands = [...new Set([...E.gcFinal.slice(0, 12).map((e) => e.bib), ...S.story])];
       const t = tokens();
       cands.forEach((b) => {
         const on = S.story.includes(b);
-        chipsBox.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), on: { click: () => {
+        const r = R(b);
+        chipsBox.appendChild(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), title: r.finished ? `${r.name}: #${r.gcRank} overall` : `${r.name}: ${r.status.toLowerCase()}`, on: { click: () => {
           if (on) { S.story = S.story.filter((x) => x !== b); slots.delete(b); drawChips(); redraw(storyChart); } else addStory(b);
-        } } }, h('span', { class: 'sw', style: `background:${on ? t.s[slots.get(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), R(b).short));
+        } } }, h('span', { class: 'sw', style: `background:${on ? t.s[slots.get(b)] : 'transparent'};border:1px solid var(--rule-strong)` }), r.finished ? r.short : `${r.short} (out)`));
       });
     }
     drawChips();
     const storyChart = chart(storyBox, (t) => {
       const bands = (code, color) => E.stages.filter((s) => s.code === code).map((s) => [{ xAxis: s.id - 0.5, itemStyle: { color: blend(color, t.sheet, 0.86) } }, { xAxis: s.id + 0.5 }]);
-      const series = S.story.map((bib, i) => ({
-        type: 'line', name: R(bib).short, showSymbol: false, symbolSize: 8, lineStyle: { width: 2, color: t.s[slots.get(bib)] }, itemStyle: { color: t.s[slots.get(bib)] },
-        emphasis: { focus: 'series' }, endLabel: { show: true, formatter: R(bib).short, color: t.ink2, fontSize: 12 },
-        data: E.stages.map((s) => { const e = E.gcPositionAfter(bib, s.id); return e ? [s.id, mins(e.gap)] : [s.id, null]; }),
-        markArea: i === 0 ? { silent: true, data: [...bands('mountain', t.terr.mountain), ...bands('itt', t.terr.itt)] } : undefined,
-      }));
+      // riders who left the race get points only for the stages they completed, so their line simply stops
+      const series = S.story.map((bib) => {
+        const r = R(bib);
+        return {
+          type: 'line', name: r.short, showSymbol: !r.finished, symbolSize: 6, lineStyle: { width: 2, color: t.s[slots.get(bib)] }, itemStyle: { color: t.s[slots.get(bib)] },
+          emphasis: { focus: 'series' }, endLabel: { show: true, formatter: r.finished ? r.short : `${r.short} · out`, color: t.ink2, fontSize: 12 },
+          data: E.stages.map((s) => { const e = E.gcPositionAfter(bib, s.id); return e ? [s.id, mins(e.gap)] : null; }).filter(Boolean),
+        };
+      });
+      // the stage bands sit on their own empty series so they stay visible when no rider is picked
+      series.unshift({ type: 'line', name: 'stage types', data: [], silent: true, tooltip: { show: false },
+        markArea: { silent: true, data: [...bands('mountain', t.terr.mountain), ...bands('itt', t.terr.itt)] } });
+      const empty = S.story.length === 0;
       return Object.assign(base(t), {
         grid: { left: 8, right: 90, top: 20, bottom: 6, containLabel: true },
         xAxis: axisVal(t, { min: 0.5, max: 21.5, splitLine: { show: false }, axisLine: { show: true, lineStyle: { color: t.axis } },
           axisTick: { show: true, customValues: E.stages.map((s) => s.id), lineStyle: { color: t.axis } },
           axisLabel: { color: t.ink2, customValues: E.stages.map((s) => s.id) }, name: 'Stage', nameLocation: 'middle', nameGap: 26 }),
-        yAxis: axisY(t, { inverse: true, name: 'minutes behind', nameLocation: 'start', nameGap: 10, min: 0 }),
+        yAxis: axisY(t, Object.assign({ inverse: true, name: 'minutes behind', nameLocation: 'start', nameGap: 10, min: 0 }, empty ? { max: 10 } : {})),
         tooltip: Object.assign(base(t).tooltip, { trigger: 'axis', axisPointer: { type: 'line', lineStyle: { color: t.ruleStrong } }, formatter: (ps) => {
+          if (!ps.length) return '';
           const sid = Math.round(ps[0].axisValue); const s2 = E.stageById.get(sid);
           if (!s2) return '';
-          const rows = ps.filter((p) => p.value[1] != null).sort((a, b) => a.value[1] - b.value[1]);
-          return tipHead(`After stage ${sid} · ${TL[s2.code]}`) + rows.map((p) => tipRow(p.color, p.seriesName, p.value[1] === 0 ? 'leader' : `+${p.value[1].toFixed(2)} min`)).join('');
+          const rows = ps.filter((p) => p.value && p.value[0] === sid && p.value[1] != null).sort((a, b) => a.value[1] - b.value[1]);
+          const out = S.story.filter((bib) => !E.gcPositionAfter(bib, sid)).map((bib) => tipRow(t.s[slots.get(bib)], R(bib).short, R(bib).status.toLowerCase()));
+          return tipHead(`After stage ${sid} · ${TL[s2.code]}`) + rows.map((p) => tipRow(p.color, p.seriesName, p.value[1] === 0 ? 'leader' : `+${p.value[1].toFixed(2)} min`)).join('') + out.join('');
         } }),
         series,
       });
