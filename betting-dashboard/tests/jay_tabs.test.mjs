@@ -1,4 +1,4 @@
-// Checks the calculations behind pages 02-05 of jay.html (Peloton & Pronostics) against the
+// Checks the calculations behind pages 02-05 of peloton-pronostics-complete/index.html (Jay's Peloton & Pronostics with the WIP pages completed) against the
 // independent pandas reference in tests/expected/ and against the verified engine in src/engine.js.
 //   node betting-dashboard/tests/jay_tabs.test.mjs        (from the repo root)
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ import { parseCSV, loadData } from '../build.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(here, '..', '..');
-const html = fs.readFileSync(path.join(ROOT, 'jay.html'), 'utf8');
+const html = fs.readFileSync(path.join(ROOT, 'peloton-pronostics-complete', 'index.html'), 'utf8');
 const block = (open) => { const a = html.indexOf(open); if (a < 0) throw new Error(`missing ${open}`); const s = a + open.length; return html.slice(s, html.indexOf('</script>', s)); };
 const ALL = JSON.parse(block('<script type="application/json" id="embedded-data">'));
 const ctx = { module: { exports: {} } }; vm.createContext(ctx);
